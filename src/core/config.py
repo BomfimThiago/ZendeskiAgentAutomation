@@ -1,3 +1,10 @@
+"""
+Application configuration management using Pydantic Settings.
+
+This module centralizes all application settings and environment variables.
+Using Pydantic Settings provides type validation, automatic .env file loading,
+and clear documentation of required configuration.
+"""
 from pydantic_settings import BaseSettings
 
 

@@ -1,3 +1,11 @@
+"""
+Background task client for FastAPI applications.
+
+This module provides a robust client for managing background tasks with
+automatic retry mechanisms, error handling, and structured logging. It wraps
+FastAPI's BackgroundTasks to provide additional reliability and observability
+for asynchronous operations.
+"""
 import asyncio
 import logging
 from typing import Any, Callable, Dict, Optional

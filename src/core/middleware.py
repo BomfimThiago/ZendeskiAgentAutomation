@@ -1,3 +1,10 @@
+"""
+Custom middleware components for the FastAPI application.
+
+This module provides middleware for request/response processing including
+request ID generation, request logging, and performance monitoring. The
+middleware adds traceability and observability to all API requests.
+"""
 import time
 import uuid
 from typing import Callable

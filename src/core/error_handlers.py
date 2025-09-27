@@ -1,3 +1,10 @@
+"""
+Global error handlers for the FastAPI application.
+
+This module provides centralized error handling for different types of
+exceptions that can occur in the application. It ensures consistent error
+response formats and proper logging of errors for monitoring and debugging.
+"""
 from typing import Union
 
 from fastapi import Request, status

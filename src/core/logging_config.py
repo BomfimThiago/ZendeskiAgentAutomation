@@ -1,3 +1,11 @@
+"""
+Centralized logging configuration for the application.
+
+This module provides structured logging with different configurations for
+development and production environments. It includes JSON formatting for
+production, custom formatters, and utilities for structured logging with
+extra context data.
+"""
 import json
 import logging
 import logging.config

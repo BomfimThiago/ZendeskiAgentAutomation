@@ -1,3 +1,11 @@
+"""
+Custom exception classes for the application.
+
+This module defines custom exceptions that extend FastAPI's HTTPException
+to provide more detailed error information. The DetailedHTTPException
+allows including extra context data in error responses for better debugging
+and client error handling.
+"""
 from typing import Any, Dict, Optional
 
 from fastapi import HTTPException, status

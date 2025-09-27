@@ -1,3 +1,10 @@
+"""
+Base models and custom Pydantic configurations.
+
+This module provides a custom base model that extends Pydantic's BaseModel
+with standardized datetime formatting and serialization utilities. All
+application models should inherit from CustomModel to ensure consistency.
+"""
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
