@@ -18,16 +18,13 @@ logger = get_logger("main")
 
 
 def create_application() -> FastAPI:
-    logger.info(f"Creating FastAPI application for environment: {settings.ENVIRONMENT}")
+    logger.info("Creating FastAPI application")
 
     app_configs = {
         "title": "FastAPI Hello World",
         "version": "1.0.0",
-        "openapi_url": "/api/v1/openapi.json" if settings.ENVIRONMENT in settings.SHOW_DOCS_ENVIRONMENT else None,
+        "openapi_url": "/api/v1/openapi.json",
     }
-
-    if settings.ENVIRONMENT not in settings.SHOW_DOCS_ENVIRONMENT:
-        app_configs["openapi_url"] = None
 
     application = FastAPI(**app_configs)
 

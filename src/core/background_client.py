@@ -19,10 +19,13 @@ logger = get_logger("background_client")
 
 
 class BackgroundTaskClient:
+    """Client for managing background tasks with error handling and retry mechanisms."""
+
     def __init__(self):
         self.background_tasks: Optional[BackgroundTasks] = None
 
     def set_background_tasks(self, background_tasks: BackgroundTasks) -> None:
+        """Set the FastAPI BackgroundTasks instance for this request."""
         self.background_tasks = background_tasks
 
     def add_task(
@@ -34,16 +37,17 @@ class BackgroundTaskClient:
         **kwargs
     ) -> None:
         """
+        Add a background task with error handling and retry mechanisms.
 
         Args:
-            func: Função a ser executada
-            *args: Argumentos da função
-            task_name: Nome da tarefa para logs
-            max_retries: Número máximo de tentativas
-            **kwargs: Argumentos nomeados da função
+            func: Function to be executed
+            *args: Function arguments
+            task_name: Task name for logging
+            max_retries: Maximum number of retry attempts
+            **kwargs: Function keyword arguments
         """
         if not self.background_tasks:
-            raise RuntimeError("BackgroundTasks não foi configurado. Use set_background_tasks()")
+            raise RuntimeError("BackgroundTasks not configured. Use set_background_tasks()")
 
         task_name = task_name or func.__name__
 
@@ -54,7 +58,7 @@ class BackgroundTaskClient:
         log_with_context(
             logger,
             logging.INFO,
-            f"Background task '{task_name}' adicionada",
+            f"Background task '{task_name}' added",
             task_name=task_name,
             max_retries=max_retries,
             args_count=len(args),
@@ -62,6 +66,7 @@ class BackgroundTaskClient:
         )
 
     def _create_task_wrapper(self, func: Callable, task_name: str, max_retries: int) -> Callable:
+        """Create wrapper for function with error handling and retry."""
 
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -73,7 +78,7 @@ class BackgroundTaskClient:
                     log_with_context(
                         logger,
                         logging.INFO,
-                        f"Executando task '{task_name}' - tentativa {attempt}",
+                        f"Executing task '{task_name}' - attempt {attempt}",
                         task_name=task_name,
                         attempt=attempt,
                         max_retries=max_retries
@@ -87,7 +92,7 @@ class BackgroundTaskClient:
                     log_with_context(
                         logger,
                         logging.INFO,
-                        f"Task '{task_name}' executada com sucesso",
+                        f"Task '{task_name}' executed successfully",
                         task_name=task_name,
                         attempt=attempt
                     )
@@ -100,7 +105,7 @@ class BackgroundTaskClient:
                     log_with_context(
                         logger,
                         logging.WARNING,
-                        f"Task '{task_name}' falhou na tentativa {attempt}",
+                        f"Task '{task_name}' failed on attempt {attempt}",
                         task_name=task_name,
                         attempt=attempt,
                         max_retries=max_retries,
@@ -112,7 +117,7 @@ class BackgroundTaskClient:
                         log_with_context(
                             logger,
                             logging.ERROR,
-                            f"Task '{task_name}' falhou definitivamente após {max_retries} tentativas",
+                            f"Task '{task_name}' failed permanently after {max_retries} attempts",
                             task_name=task_name,
                             max_retries=max_retries,
                             final_error=str(last_error),
@@ -133,68 +138,6 @@ background_client = BackgroundTaskClient()
 
 
 def get_background_client() -> BackgroundTaskClient:
+    """Dependency to get the background tasks client."""
     return background_client
 
-
-async def send_email_task(to_email: str, subject: str, message: str) -> None:
-    log_with_context(
-        logger,
-        logging.INFO,
-        "Enviando email",
-        to_email=to_email,
-        subject=subject
-    )
-
-    await asyncio.sleep(2)
-
-    import random
-    if random.random() < 0.3:  # 30% chance de erro
-        raise Exception("Falha no servidor de email")
-
-    log_with_context(
-        logger,
-        logging.INFO,
-        "Email enviado com sucesso",
-        to_email=to_email
-    )
-
-
-async def process_data_task(data: Dict[str, Any], user_id: int) -> None:
-    log_with_context(
-        logger,
-        logging.INFO,
-        "Processando dados",
-        user_id=user_id,
-        data_size=len(str(data))
-    )
-
-    await asyncio.sleep(3)
-
-    log_with_context(
-        logger,
-        logging.INFO,
-        "Dados processados com sucesso",
-        user_id=user_id,
-        items_processed=len(data) if isinstance(data, dict) else 1
-    )
-
-
-def sync_cleanup_task(file_path: str) -> None:
-    import os
-
-    log_with_context(
-        logger,
-        logging.INFO,
-        "Executando limpeza de arquivo",
-        file_path=file_path
-    )
-
-    import time
-    time.sleep(1)
-
-    log_with_context(
-        logger,
-        logging.INFO,
-        "Limpeza concluída",
-        file_path=file_path
-    )
