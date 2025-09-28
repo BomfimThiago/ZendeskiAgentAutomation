@@ -8,9 +8,12 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    ZENDESK_URL: str = "" 
+    ZENDESK_URL: str = ""
     ZENDESK_TOKEN: str = ""
     ZENDESK_EMAIL: str = ""
+
+    # OpenAI Configuration
+    OPENAI_API_KEY: str = ""
 
     # API Configuration
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8080"]
