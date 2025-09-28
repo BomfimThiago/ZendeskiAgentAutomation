@@ -13,6 +13,7 @@ from langchain.schema import HumanMessage, SystemMessage, AIMessage
 from .config import ai_config
 from .prompts.persona import TELECORP_PERSONA
 from .memory.memory import AgentMemoryManager
+from .guardrails import InputValidator, ThreatLevel, ViolationType
 from src.core.logging_config import LoggerMixin, log_with_context
 
 
@@ -31,6 +32,12 @@ class TeleCorpAIAgent(LoggerMixin):
         )
 
         self.memory_manager = AgentMemoryManager(max_token_limit=ai_config.MAX_TOKENS)
+
+        # Initialize security guardrails
+        if ai_config.ENABLE_GUARDRAILS:
+            self.input_validator = InputValidator()
+        else:
+            self.input_validator = None
 
         self.system_persona = SystemMessage(content=TELECORP_PERSONA)
 
@@ -68,11 +75,33 @@ class TeleCorpAIAgent(LoggerMixin):
             return "I didn't receive your message. Could you please try again?"
 
         try:
+            # Generate session key first
             session_key = self.memory_manager.create_session_key(
                 ticket_id=ticket_id,
                 user_id=user_id,
                 session_id=session_id or "default"
             )
+
+            # SECURITY: Validate input with guardrails
+            if self.input_validator and ai_config.ENABLE_GUARDRAILS:
+                threat_level, violation_type, security_message = self.input_validator.validate_input(user_message)
+
+                if threat_level == ThreatLevel.BLOCKED:
+                    # Log security violation
+                    if ai_config.LOG_SECURITY_VIOLATIONS:
+                        log_with_context(
+                            self.logger,
+                            logging.WARNING,
+                            f"Security violation detected: {violation_type.value if violation_type else 'unknown'}",
+                            user_message_preview=user_message[:50] + "..." if len(user_message) > 50 else user_message,
+                            threat_level=threat_level.value,
+                            violation_type=violation_type.value if violation_type else None,
+                            session_key=session_key,
+                            ticket_id=ticket_id,
+                            user_id=user_id
+                        )
+
+                    return security_message
 
             memory = self.memory_manager.get_memory(session_key)
 

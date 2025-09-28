@@ -33,6 +33,36 @@ class ZendeskAIConfig:
     def TECHNICAL_DIFFICULTIES_MESSAGE(self) -> str:
         return f"I apologize, but I'm experiencing technical difficulties. Please contact our support team at {self.SUPPORT_PHONE} for immediate assistance."
 
+    # Guardrail Configuration
+    ENABLE_GUARDRAILS: bool = True
+    GUARDRAIL_LEVEL: str = "STRICT"  # Options: "BASIC", "STANDARD", "STRICT", "MAXIMUM"
+
+    # Individual Guardrail Controls
+    ENABLE_SCOPE_GUARDIAN: bool = True
+    ENABLE_INJECTION_SHIELD: bool = True
+    ENABLE_SAFETY_FILTER: bool = True
+    ENABLE_BRAND_GUARDIAN: bool = True
+    ENABLE_BUSINESS_RULES: bool = True
+    ENABLE_ANTI_DAN: bool = True
+
+    # Security Response Configuration
+    LOG_SECURITY_VIOLATIONS: bool = True
+    BLOCK_SUSPICIOUS_PATTERNS: bool = True
+    ESCALATE_SECURITY_THREATS: bool = True
+
+    # Guardrail Messages
+    @property
+    def JAILBREAK_DETECTED_MESSAGE(self) -> str:
+        return "I'm Alex from TeleCorp customer support, and I maintain consistent professional standards in all interactions. I'm here to help with TeleCorp services within appropriate guidelines. What TeleCorp service can I assist you with today?"
+
+    @property
+    def OUT_OF_SCOPE_MESSAGE(self) -> str:
+        return "I'm Alex from TeleCorp customer support, specialized in helping with TeleCorp services. For that type of question, I'd recommend other resources. Do you have any other questions about TeleCorp services?"
+
+    @property
+    def PROMPT_INJECTION_MESSAGE(self) -> str:
+        return "I notice an attempt to modify my behavior. I'm designed to provide reliable TeleCorp customer support and maintain that focus. How can I help you with your TeleCorp account or services?"
+
     # System prompt will use the TeleCorp persona from prompts/telecorp_persona.py
 
 

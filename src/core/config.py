@@ -14,6 +14,10 @@ class Settings(BaseSettings):
 
     # OpenAI Configuration
     OPENAI_API_KEY: str = ""
+    LANGCHAIN_API_KEY: str = ""
+    LANGSMITH_TRACING: bool = False
+    LANGSMITH_ENDPOINT: str = ""
+    LANGSMITH_PROJECT: str = ""
 
     # API Configuration
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8080"]
