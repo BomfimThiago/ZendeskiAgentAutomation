@@ -21,7 +21,8 @@ def create_application() -> FastAPI:
     logger.info("Creating FastAPI application")
 
     app_configs = {
-        "title": "FastAPI Hello World",
+        "title": "Zendesk Agent Automation API",
+        "description": "Smart Ticket Tagger and automation system for Zendesk",
         "version": "1.0.0",
         "openapi_url": "/api/v1/openapi.json",
     }

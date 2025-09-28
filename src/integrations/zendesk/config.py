@@ -20,7 +20,7 @@ class ZendeskConfig:
         """Get the full API URL."""
         return f"{self.BASE_URL}/api/{self.API_VERSION}"
 
-    EMAIL: str = ""  # Will be set from email in token
+    EMAIL: str = settings.ZENDESK_EMAIL
     TOKEN: str = settings.ZENDESK_TOKEN
 
     RATE_LIMIT_PER_MINUTE: int = 700  # Zendesk allows 700 requests per minute
