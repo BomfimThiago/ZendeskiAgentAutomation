@@ -5,7 +5,15 @@ This module handles storing and retrieving conversation context
 to maintain continuity across customer support interactions.
 """
 
+import warnings
 from typing import List, Dict, Any, Optional
+
+
+# OBS These warning filters are necessary just to the chat interface we create in the console
+
+# Suppress LangChain deprecation warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="langchain")
+
 from langchain.memory import ConversationBufferMemory
 from langchain.schema import BaseMessage, HumanMessage, AIMessage, SystemMessage
 
