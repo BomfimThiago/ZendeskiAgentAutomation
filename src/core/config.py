@@ -8,9 +8,8 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    # Zendesk Configuration
-    ZENDESK_URL: str  # This will read from .env
-    ZENDESK_TOKEN: str  # This will read from .env
+    ZENDESK_URL: str = "" 
+    ZENDESK_TOKEN: str = ""
 
     # API Configuration
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8080"]
