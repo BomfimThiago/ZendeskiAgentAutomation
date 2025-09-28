@@ -23,8 +23,8 @@ langgraph_agent/
 │   └── schemas.py              # Pydantic models
 ├── tools/               # External API integrations
 │   ├── __init__.py
-│   ├── zendesk_client.py      # Zendesk API wrapper
-│   └── knowledge_search.py     # TeleCorp knowledge base
+│   ├── zendesk_client.py      # Zendesk API wrapper (future)
+│   └── knowledge_search.py     # TeleCorp knowledge base (future)
 ├── memory/              # Conversation persistence
 │   ├── __init__.py
 │   ├── thread_memory.py       # Short-term thread memory

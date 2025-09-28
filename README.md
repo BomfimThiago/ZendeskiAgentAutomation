@@ -92,3 +92,12 @@ The AI agent operates as **"Alex"** - a professional, helpful TeleCorp customer 
 - Billing and account management
 - Technical troubleshooting
 - Service upgrades and changes
+
+## 📚 Knowledge Base
+
+The `telecorpBaseKnowledge/` folder contains TeleCorp company information and documentation:
+- Company background and story
+- Service plans and pricing
+- FAQ and troubleshooting guides
+
+**Note**: PDF files in the knowledge base are not tracked in git (local development only).
