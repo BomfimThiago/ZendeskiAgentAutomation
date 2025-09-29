@@ -4,8 +4,12 @@ from typing import Dict, Any
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
-from src.integrations.zendesk.langgraph_agent.state.conversation_state import ConversationState
-from src.integrations.zendesk.langgraph_agent.config.langgraph_config import telecorp_config
+from src.integrations.zendesk.langgraph_agent.state.conversation_state import (
+    ConversationState,
+)
+from src.integrations.zendesk.langgraph_agent.config.langgraph_config import (
+    telecorp_config,
+)
 from src.integrations.zendesk.langgraph_agent.tools.telecorp_tools import telecorp_tools
 
 
@@ -33,7 +37,7 @@ async def supervisor_agent_node(state: ConversationState) -> ConversationState:
         api_key=telecorp_config.OPENAI_API_KEY,
         model="gpt-4",  # Better for sales conversations and lead capture
         temperature=0.2,
-        max_tokens=600
+        max_tokens=600,
     ).bind_tools(telecorp_tools)
 
     client_already_identified = state.get("is_existing_client") is not None
@@ -70,9 +74,9 @@ DO NOT ROUTE for:
 Respond with ONLY: SUPPORT, BILLING, or SALES"""
 
         try:
-            analysis = await supervisor_llm.ainvoke([
-                {"role": "user", "content": specialist_routing_prompt}
-            ])
+            analysis = await supervisor_llm.ainvoke(
+                [{"role": "user", "content": specialist_routing_prompt}]
+            )
 
             intent = analysis.content.strip().upper()
             # Only route away if it's clearly SUPPORT or BILLING
@@ -88,11 +92,7 @@ Respond with ONLY: SUPPORT, BILLING, or SALES"""
     # If we need specialist routing, route away
     if needs_specialist_routing and specialist_type:
         route_to = "support" if specialist_type == "SUPPORT" else "billing"
-        return {
-            **state,
-            "route_to": route_to,
-            "current_persona": route_to
-        }
+        return {**state, "route_to": route_to, "current_persona": route_to}
 
     # DEFAULT: Handle as sales-focused conversation with lead generation focus
     if not client_already_identified:
@@ -165,10 +165,9 @@ Guidelines:
 Your goal: Maximize customer satisfaction while identifying growth opportunities."""
 
     try:
-        response = await supervisor_llm.ainvoke([
-            SystemMessage(content=sales_conversation_prompt),
-            *messages
-        ])
+        response = await supervisor_llm.ainvoke(
+            [SystemMessage(content=sales_conversation_prompt), *messages]
+        )
 
         # Handle tool calls if any (for client identification and sales activities)
         if response.tool_calls:
@@ -183,7 +182,9 @@ Your goal: Maximize customer satisfaction while identifying growth opportunities
                 if tool_name == "create_sales_ticket":
                     # Ensure interest level is set for sales tickets
                     if "interest_level" not in tool_args:
-                        tool_args["interest_level"] = "high"  # Default to high for proactive sales
+                        tool_args["interest_level"] = (
+                            "high"  # Default to high for proactive sales
+                        )
 
                 # Find and execute the tool
                 tool_func = None
@@ -195,54 +196,67 @@ Your goal: Maximize customer satisfaction while identifying growth opportunities
                 if tool_func:
                     try:
                         tool_result = await tool_func.ainvoke(tool_args)
-                        tool_messages.append({
-                            "role": "tool",
-                            "content": str(tool_result),
-                            "tool_call_id": tool_call["id"]
-                        })
+                        tool_messages.append(
+                            {
+                                "role": "tool",
+                                "content": str(tool_result),
+                                "tool_call_id": tool_call["id"],
+                            }
+                        )
 
                         # Update state based on tool results
-                        if tool_name == "get_user_tickets" and "customer_email" in tool_args:
+                        if (
+                            tool_name == "get_user_tickets"
+                            and "customer_email" in tool_args
+                        ):
                             customer_email = tool_args["customer_email"]
                             if "I didn't find any existing tickets" in str(tool_result):
-                                updated_state.update({
-                                    "is_existing_client": True,
-                                    "customer_email": customer_email,
-                                    "existing_tickets": None
-                                })
+                                updated_state.update(
+                                    {
+                                        "is_existing_client": True,
+                                        "customer_email": customer_email,
+                                        "existing_tickets": None,
+                                    }
+                                )
                             elif "I found your account" in str(tool_result):
-                                updated_state.update({
-                                    "is_existing_client": True,
-                                    "customer_email": customer_email,
-                                    "existing_tickets": []
-                                })
+                                updated_state.update(
+                                    {
+                                        "is_existing_client": True,
+                                        "customer_email": customer_email,
+                                        "existing_tickets": [],
+                                    }
+                                )
 
                     except Exception as e:
-                        tool_messages.append({
-                            "role": "tool",
-                            "content": f"I'd be happy to help you with that! Let me connect you with our team for personalized assistance.",
-                            "tool_call_id": tool_call["id"]
-                        })
+                        tool_messages.append(
+                            {
+                                "role": "tool",
+                                "content": f"I'd be happy to help you with that! Let me connect you with our team for personalized assistance.",
+                                "tool_call_id": tool_call["id"],
+                            }
+                        )
 
             # Get final response after tool execution
             if tool_messages:
-                final_response = await supervisor_llm.ainvoke([
-                    SystemMessage(content=sales_conversation_prompt),
-                    *messages,
-                    response,
-                    *tool_messages
-                ])
+                final_response = await supervisor_llm.ainvoke(
+                    [
+                        SystemMessage(content=sales_conversation_prompt),
+                        *messages,
+                        response,
+                        *tool_messages,
+                    ]
+                )
 
                 return {
                     **updated_state,
-                    "messages": messages + [response] + tool_messages + [final_response]
+                    "messages": messages
+                    + [response]
+                    + tool_messages
+                    + [final_response],
                 }
 
         # No tools used - direct sales response
-        return {
-            **state,
-            "messages": messages + [response]
-        }
+        return {**state, "messages": messages + [response]}
 
     except Exception as e:
         print(f"Sales supervisor error: {e}")
@@ -250,7 +264,4 @@ Your goal: Maximize customer satisfaction while identifying growth opportunities
         fallback_response = AIMessage(
             content="Hi! I'm Alex from TeleCorp, your dedicated sales representative. Welcome! To provide you with the best personalized service and find the perfect TeleCorp solution for you, I'd like to know: Are you an existing TeleCorp customer, or are you interested in learning about our services?"
         )
-        return {
-            **state,
-            "messages": messages + [fallback_response]
-        }
+        return {**state, "messages": messages + [fallback_response]}

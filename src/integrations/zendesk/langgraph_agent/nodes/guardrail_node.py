@@ -11,8 +11,12 @@ from langchain_openai import ChatOpenAI
 import re
 import logging
 
-from src.integrations.zendesk.langgraph_agent.state.conversation_state import ConversationState
-from src.integrations.zendesk.langgraph_agent.config.langgraph_config import telecorp_config
+from src.integrations.zendesk.langgraph_agent.state.conversation_state import (
+    ConversationState,
+)
+from src.integrations.zendesk.langgraph_agent.config.langgraph_config import (
+    telecorp_config,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +30,7 @@ class SecurityValidator:
             api_key=telecorp_config.OPENAI_API_KEY,
             model="gpt-3.5-turbo-1106",
             temperature=0.0,  # Deterministic for security
-            max_tokens=150
+            max_tokens=150,
         )
 
         # Critical danger patterns (minimal, high-confidence only)
@@ -38,9 +42,14 @@ class SecurityValidator:
         ]
 
         # Compile patterns for efficiency
-        self.compiled_danger_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in self.critical_danger_patterns]
+        self.compiled_danger_patterns = [
+            re.compile(pattern, re.IGNORECASE)
+            for pattern in self.critical_danger_patterns
+        ]
 
-    async def validate_input(self, user_message: str, conversation_context: str = "") -> Tuple[bool, str, str]:
+    async def validate_input(
+        self, user_message: str, conversation_context: str = ""
+    ) -> Tuple[bool, str, str]:
         """
         Modern prompt-based validation with minimal pattern matching.
 
@@ -51,11 +60,13 @@ class SecurityValidator:
         # Step 1: Quick check for critical danger patterns only (minimal, high-confidence)
         for pattern in self.compiled_danger_patterns:
             if pattern.search(user_message):
-                logger.warning(f"Blocked critical dangerous content: {user_message[:100]}...")
+                logger.warning(
+                    f"Blocked critical dangerous content: {user_message[:100]}..."
+                )
                 return (
                     False,
                     "inappropriate",
-                    "I cannot provide assistance with harmful or illegal activities. I'm here to help with TeleCorp services. What can I assist you with today?"
+                    "I cannot provide assistance with harmful or illegal activities. I'm here to help with TeleCorp services. What can I assist you with today?",
                 )
 
         # Step 2: Advanced LLM-based intent detection and conversation flow analysis
@@ -113,14 +124,18 @@ Respond with ONLY: SAFE, PROMPT_INJECTION, OUT_OF_SCOPE, or INAPPROPRIATE
 </security_analysis>"""
 
         try:
-            response = await self.validator_llm.ainvoke([
-                SystemMessage(content=validation_prompt)
-            ])
+            response = await self.validator_llm.ainvoke(
+                [SystemMessage(content=validation_prompt)]
+            )
 
             classification = response.content.strip().upper()
 
             # Default to safe for any unclear responses
-            if classification not in ["PROMPT_INJECTION", "OUT_OF_SCOPE", "INAPPROPRIATE"]:
+            if classification not in [
+                "PROMPT_INJECTION",
+                "OUT_OF_SCOPE",
+                "INAPPROPRIATE",
+            ]:
                 return (True, "", "")
 
             # Extract customer name from conversation context for personalized responses
@@ -128,11 +143,12 @@ Respond with ONLY: SAFE, PROMPT_INJECTION, OUT_OF_SCOPE, or INAPPROPRIATE
             if conversation_context:
                 # Simple name extraction - look for "I'm [name]" patterns
                 import re
+
                 name_patterns = [
                     r"I'm\s+([A-Za-z]+)",
                     r"I am\s+([A-Za-z]+)",
                     r"My name is\s+([A-Za-z]+)",
-                    r"Call me\s+([A-Za-z]+)"
+                    r"Call me\s+([A-Za-z]+)",
                 ]
                 for pattern in name_patterns:
                     match = re.search(pattern, conversation_context, re.IGNORECASE)
@@ -147,21 +163,21 @@ Respond with ONLY: SAFE, PROMPT_INJECTION, OUT_OF_SCOPE, or INAPPROPRIATE
                 return (
                     False,
                     "prompt_injection",
-                    f"I maintain consistent professional standards, {name_part}and I'm here to help with TeleCorp services. What can I assist you with today?"
+                    f"I maintain consistent professional standards, {name_part}and I'm here to help with TeleCorp services. What can I assist you with today?",
                 )
 
             elif classification == "OUT_OF_SCOPE":
                 return (
                     False,
                     "out_of_scope",
-                    f"I'm not able to answer that question, {name_part}but I'm here to help with TeleCorp services like internet, mobile, billing, and technical support. Is there anything about TeleCorp you need help with or want to know?"
+                    f"I'm not able to answer that question, {name_part}but I'm here to help with TeleCorp services like internet, mobile, billing, and technical support. Is there anything about TeleCorp you need help with or want to know?",
                 )
 
             elif classification == "INAPPROPRIATE":
                 return (
                     False,
                     "inappropriate",
-                    f"I maintain professional customer service standards, {name_part}and I'm here to help with TeleCorp services. How can I assist you today?"
+                    f"I maintain professional customer service standards, {name_part}and I'm here to help with TeleCorp services. How can I assist you today?",
                 )
 
             return (True, "", "")
@@ -192,14 +208,19 @@ Respond with ONLY: SAFE, PROMPT_INJECTION, OUT_OF_SCOPE, or INAPPROPRIATE
             sanitized = re.sub(pattern, "", sanitized, flags=re.IGNORECASE | re.DOTALL)
 
         # Remove any accidentally included API keys or tokens
-        sanitized = re.sub(r'(api[_-]?key|token|secret|password)["\']?\s*[:=]\s*["\']?[\w-]+', '[REDACTED]', sanitized, flags=re.IGNORECASE)
+        sanitized = re.sub(
+            r'(api[_-]?key|token|secret|password)["\']?\s*[:=]\s*["\']?[\w-]+',
+            "[REDACTED]",
+            sanitized,
+            flags=re.IGNORECASE,
+        )
 
         # Remove any PII patterns that shouldn't be in responses
-        sanitized = re.sub(r'\b\d{3}-\d{2}-\d{4}\b', '[SSN REDACTED]', sanitized)  # SSN
+        sanitized = re.sub(r"\b\d{3}-\d{2}-\d{4}\b", "[SSN REDACTED]", sanitized)  # SSN
 
         # Clean up any multiple spaces or newlines created by removal
-        sanitized = re.sub(r'\n\n+', '\n\n', sanitized)
-        sanitized = re.sub(r'  +', ' ', sanitized)
+        sanitized = re.sub(r"\n\n+", "\n\n", sanitized)
+        sanitized = re.sub(r"  +", " ", sanitized)
 
         return sanitized.strip()
 
@@ -248,15 +269,11 @@ async def input_validation_node(state: ConversationState) -> ConversationState:
             **state,
             "messages": messages + [AIMessage(content=safe_response)],
             "security_blocked": True,  # Flag to skip further processing
-            "threat_type": threat_type
+            "threat_type": threat_type,
         }
 
     # Input is safe, continue processing
-    return {
-        **state,
-        "security_blocked": False,
-        "threat_type": None
-    }
+    return {**state, "security_blocked": False, "threat_type": None}
 
 
 async def output_sanitization_node(state: ConversationState) -> ConversationState:
@@ -284,14 +301,9 @@ async def output_sanitization_node(state: ConversationState) -> ConversationStat
         logger.info("Sanitized AI output to remove sensitive information")
 
         # Create a new message list with the sanitized content
-        sanitized_messages = messages[:-1] + [
-            AIMessage(content=sanitized_content)
-        ]
+        sanitized_messages = messages[:-1] + [AIMessage(content=sanitized_content)]
 
-        return {
-            **state,
-            "messages": sanitized_messages
-        }
+        return {**state, "messages": sanitized_messages}
 
     return state
 
