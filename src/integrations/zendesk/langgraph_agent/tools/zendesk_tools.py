@@ -233,26 +233,48 @@ async def get_user_tickets(customer_email: str) -> str:
         if not tickets:
             return f"I didn't find any existing tickets for {customer_email}. You appear to be a new customer or haven't contacted support before. How can I help you today?"
 
+        # Filter out sales/lead tickets - customers should only see support and billing tickets
+        customer_visible_tickets = []
+        for ticket in tickets:
+            # Skip tickets with sales/lead tags or subjects
+            if any(
+                tag in ticket.subject.upper()
+                for tag in ["[SALES]", "[HOT LEAD]", "[LEAD]"]
+            ):
+                continue
+            # Also check tags if available
+            if hasattr(ticket, "tags") and ticket.tags:
+                if any(tag in ["sales", "lead", "hot_lead"] for tag in ticket.tags):
+                    continue
+            customer_visible_tickets.append(ticket)
+
+        if not customer_visible_tickets:
+            return f"I didn't find any existing support tickets for {customer_email}. How can I help you today?"
+
         # Format tickets for presentation
         ticket_list = []
-        for i, ticket in enumerate(tickets[:5], 1):  # Show max 5 recent tickets
+        for i, ticket in enumerate(
+            customer_visible_tickets[:5], 1
+        ):  # Show max 5 recent tickets
             status_emoji = {
-                'new': '🆕',
-                'open': '📂',
-                'pending': '⏳',
-                'hold': '⏸️',
-                'solved': '✅',
-                'closed': '📁'
-            }.get(ticket.status, '📄')
+                "new": "🆕",
+                "open": "📂",
+                "pending": "⏳",
+                "hold": "⏸️",
+                "solved": "✅",
+                "closed": "📁",
+            }.get(ticket.status, "📄")
 
             ticket_list.append(
                 f"{i}. {status_emoji} Ticket #{ticket.id}: {ticket.subject} ({ticket.status.upper()})"
             )
 
-        if len(tickets) > 5:
-            ticket_list.append(f"... and {len(tickets) - 5} more tickets")
+        if len(customer_visible_tickets) > 5:
+            ticket_list.append(
+                f"... and {len(customer_visible_tickets) - 5} more tickets"
+            )
 
-        response = f"""Great! I found your account. You have {len(tickets)} ticket(s) with TeleCorp:
+        response = f"""Great! I found your account. You have {len(customer_visible_tickets)} support ticket(s) with TeleCorp:
 
 {chr(10).join(ticket_list)}
 
@@ -301,20 +323,20 @@ async def get_ticket_details(ticket_id: str, customer_email: str) -> str:
 
         # Format ticket details for presentation
         status_emoji = {
-            'new': '🆕 New',
-            'open': '📂 Open',
-            'pending': '⏳ Pending',
-            'hold': '⏸️ On Hold',
-            'solved': '✅ Solved',
-            'closed': '📁 Closed'
-        }.get(ticket.status, f'📄 {ticket.status.title()}')
+            "new": "🆕 New",
+            "open": "📂 Open",
+            "pending": "⏳ Pending",
+            "hold": "⏸️ On Hold",
+            "solved": "✅ Solved",
+            "closed": "📁 Closed",
+        }.get(ticket.status, f"📄 {ticket.status.title()}")
 
         priority_emoji = {
-            'low': '🔵 Low',
-            'normal': '🟢 Normal',
-            'high': '🟡 High',
-            'urgent': '🔴 Urgent'
-        }.get(ticket.priority, f'📋 {ticket.priority.title()}')
+            "low": "🔵 Low",
+            "normal": "🟢 Normal",
+            "high": "🟡 High",
+            "urgent": "🔴 Urgent",
+        }.get(ticket.priority, f"📋 {ticket.priority.title()}")
 
         response = f"""Here are the details for Ticket #{ticket.id}:
 
@@ -340,4 +362,9 @@ How can I help you with this ticket? Would you like to:
 
 
 # Export the tools
-zendesk_tools_clean = [create_support_ticket, create_sales_ticket, get_user_tickets, get_ticket_details]
+zendesk_tools_clean = [
+    create_support_ticket,
+    create_sales_ticket,
+    get_user_tickets,
+    get_ticket_details,
+]
