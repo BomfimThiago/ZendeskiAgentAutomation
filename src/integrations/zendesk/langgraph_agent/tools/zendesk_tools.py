@@ -5,7 +5,7 @@ This module provides easy-to-understand tools for creating Zendesk tickets
 using the existing Zendesk service layer and organized templates.
 """
 
-from typing import Optional
+from typing import Optional, Tuple, List
 from langchain_core.tools import tool
 from src.core.logging_config import get_logger
 from src.integrations.zendesk.client import get_zendesk_client
@@ -14,6 +14,173 @@ from src.integrations.zendesk.service import TicketService
 from .templates import template_manager
 
 logger = get_logger("zendesk_tools")
+
+
+# ============================================================================
+# CONSTANTS
+# ============================================================================
+
+STATUS_EMOJIS = {
+    "new": "🆕",
+    "open": "📂",
+    "pending": "⏳",
+    "hold": "⏸️",
+    "solved": "✅",
+    "closed": "📁",
+}
+
+PRIORITY_EMOJIS = {
+    "low": "🔵",
+    "normal": "🟢",
+    "high": "🟡",
+    "urgent": "🔴",
+}
+
+VALIDATION_MESSAGES = {
+    "missing_name_email_support": """I'd be happy to create a support ticket for you! To ensure our team can follow up properly, I'll need to get some information from you first.
+
+    Could you please provide:
+    • Your full name
+    • Your email address
+
+    Once I have this information, I'll create your support ticket right away.""",
+        "missing_name_email_sales": """I'm excited to help you with TeleCorp services! To ensure our sales team can provide you with personalized assistance and follow up properly, I'll need to get some information from you first.
+
+    Could you please provide:
+    • Your full name
+    • Your email address
+
+    Once I have this information, I'll prioritize your sales inquiry and get you connected with our best specialists!""",
+        "missing_email_support": "Thanks, {name}! I have your name, but I'll also need your email address so our support team can follow up with you directly.\n\nCould you please provide your email address? Once I have that, I'll create your support ticket immediately.",
+        "missing_email_sales": """Great to meet you, {name}! I'm excited to help you find the perfect TeleCorp solution. To ensure our sales team can follow up with personalized pricing and options, I'll need your email address and phone number.
+
+    Could you please provide:
+    • Your email address
+    • Your phone number
+
+    Once I have this information, I'll create a high-priority sales ticket and you'll hear from our specialists within hours!""",
+        "missing_phone": "Perfect, {name}! I have your email ({email}). For the best sales experience, I'd also like to get your phone number so our sales specialists can reach you directly for faster service.\n\nCould you please provide your phone number? This ensures you get the quickest response from our team!",
+    }
+
+HIDDEN_TICKET_TAGS = ["[SALES]", "[HOT LEAD]", "[LEAD]"]
+HIDDEN_TAG_FIELDS = ["sales", "lead", "hot_lead"]
+
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+
+def validate_customer_info(
+    name: str, email: str, phone: str = None, ticket_type: str = "support"
+) -> Tuple[bool, Optional[str]]:
+    """
+    Validate customer information and return appropriate message if missing.
+
+    Args:
+        name: Customer name
+        email: Customer email
+        phone: Customer phone (optional)
+        ticket_type: 'support' or 'sales' for appropriate messaging
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    invalid_names = ["TeleCorp Customer", "Prospective Customer"]
+
+    if not name or name in invalid_names:
+        msg_key = (
+            "missing_name_email_sales"
+            if ticket_type == "sales"
+            else "missing_name_email_support"
+        )
+        return False, VALIDATION_MESSAGES[msg_key]
+
+    if not email:
+        msg_key = (
+            "missing_email_sales" if ticket_type == "sales" else "missing_email_support"
+        )
+        return False, VALIDATION_MESSAGES[msg_key].format(name=name)
+
+    if ticket_type == "sales" and not phone:
+        return False, VALIDATION_MESSAGES["missing_phone"].format(
+            name=name, email=email
+        )
+
+    return True, None
+
+
+def format_customer_info(name: str, email: str = None, phone: str = None) -> str:
+    """Format customer information for ticket description."""
+    info = f"Name: {name}"
+    if email:
+        info += f", Email: {email}"
+    if phone:
+        info += f", Phone: {phone}"
+    return info
+
+
+def build_sales_context(interest_level: str, conversation_summary: str) -> str:
+    """Build sales context for ticket description."""
+    return f"""
+        Interest Level: {interest_level}
+        Conversation Summary: {conversation_summary}
+
+        Sales Notes:
+        - Customer engaged with AI agent about TeleCorp services
+        - Qualified lead requiring sales follow-up
+        - Opportunity for immediate conversion
+    """
+
+
+def is_customer_visible_ticket(ticket) -> bool:
+    """Check if ticket should be visible to customers (hide internal sales/lead tickets)."""
+    if any(tag in ticket.subject.upper() for tag in HIDDEN_TICKET_TAGS):
+        return False
+
+    if hasattr(ticket, "tags") and ticket.tags:
+        if any(tag in HIDDEN_TAG_FIELDS for tag in ticket.tags):
+            return False
+
+    return True
+
+
+def filter_customer_visible_tickets(tickets: List) -> List:
+    """Filter tickets to only show customer-visible ones."""
+    return [ticket for ticket in tickets if is_customer_visible_ticket(ticket)]
+
+
+def format_ticket_list(tickets: List, max_display: int = 5) -> str:
+    """Format a list of tickets with emojis and status."""
+    ticket_lines = []
+
+    for i, ticket in enumerate(tickets[:max_display], 1):
+        emoji = STATUS_EMOJIS.get(ticket.status, "📄")
+        ticket_lines.append(
+            f"{i}. {emoji} Ticket #{ticket.id}: {ticket.subject} ({ticket.status.upper()})"
+        )
+
+    if len(tickets) > max_display:
+        ticket_lines.append(f"... and {len(tickets) - max_display} more tickets")
+
+    return "\n".join(ticket_lines)
+
+
+def get_status_display(status: str) -> str:
+    """Get emoji + status display."""
+    emoji = STATUS_EMOJIS.get(status, "📄")
+    return f"{emoji} {status.title()}"
+
+
+def get_priority_display(priority: str) -> str:
+    """Get emoji + priority display."""
+    emoji = PRIORITY_EMOJIS.get(priority, "📋")
+    return f"{emoji} {priority.title()}"
+
+
+# ============================================================================
+# TOOL FUNCTIONS
+# ============================================================================
 
 
 @tool
@@ -45,23 +212,13 @@ async def create_support_ticket(
         Confirmation message with ticket ID and next steps, or request for missing info
     """
     try:
-        if not customer_name or customer_name == "TeleCorp Customer":
-            return """I'd be happy to create a support ticket for you! To ensure our team can follow up properly, I'll need to get some information from you first.
+        is_valid, error_msg = validate_customer_info(
+            customer_name, customer_email, ticket_type="support"
+        )
+        if not is_valid:
+            return error_msg
 
-Could you please provide:
-• Your full name
-• Your email address
-
-Once I have this information, I'll create your support ticket right away."""
-
-        if not customer_email:
-            return f"""Thanks, {customer_name}! I have your name, but I'll also need your email address so our support team can follow up with you directly.
-
-Could you please provide your email address? Once I have that, I'll create your support ticket immediately."""
-
-        customer_info = f"Name: {customer_name}"
-        if customer_email:
-            customer_info += f", Email: {customer_email}"
+        customer_info = format_customer_info(customer_name, customer_email)
 
         request_summary = customer_message
         if conversation_context:
@@ -128,44 +285,16 @@ async def create_sales_ticket(
         Confirmation message optimized for sales follow-up, or request for missing info
     """
     try:
-        if not customer_name or customer_name == "Prospective Customer":
-            return """I'm excited to help you with TeleCorp services! To ensure our sales team can provide you with personalized assistance and follow up properly, I'll need to get some information from you first.
+        is_valid, error_msg = validate_customer_info(
+            customer_name, customer_email, customer_phone, ticket_type="sales"
+        )
+        if not is_valid:
+            return error_msg
 
-Could you please provide:
-• Your full name
-• Your email address
-
-Once I have this information, I'll prioritize your sales inquiry and get you connected with our best specialists!"""
-
-        if not customer_email:
-            return f"""Great to meet you, {customer_name}! I'm excited to help you find the perfect TeleCorp solution. To ensure our sales team can follow up with personalized pricing and options, I'll need your email address and phone number.
-
-Could you please provide:
-• Your email address
-• Your phone number
-
-Once I have this information, I'll create a high-priority sales ticket and you'll hear from our specialists within hours!"""
-
-        if not customer_phone:
-            return f"""Perfect, {customer_name}! I have your email ({customer_email}). For the best sales experience, I'd also like to get your phone number so our sales specialists can reach you directly for faster service.
-
-Could you please provide your phone number? This ensures you get the quickest response from our team!"""
-
-        sales_context = f"""
-            Interest Level: {interest_level}
-            Conversation Summary: {conversation_summary}
-
-            Sales Notes:
-            - Customer engaged with AI agent about TeleCorp services
-            - Qualified lead requiring sales follow-up
-            - Opportunity for immediate conversion
-        """
-
-        customer_info = f"Name: {customer_name}"
-        if customer_email:
-            customer_info += f", Email: {customer_email}"
-        if customer_phone:
-            customer_info += f", Phone: {customer_phone}"
+        customer_info = format_customer_info(
+            customer_name, customer_email, customer_phone
+        )
+        sales_context = build_sales_context(interest_level, conversation_summary)
 
         ticket_data = template_manager.get_sales_ticket_data(
             customer_info=customer_info,
@@ -220,47 +349,16 @@ async def get_user_tickets(customer_email: str) -> str:
         if not tickets:
             return f"I didn't find any existing tickets for {customer_email}. You appear to be a new customer or haven't contacted support before. How can I help you today?"
 
-        customer_visible_tickets = []
-        for ticket in tickets:
-            if any(
-                tag in ticket.subject.upper()
-                for tag in ["[SALES]", "[HOT LEAD]", "[LEAD]"]
-            ):
-                continue
-
-            if hasattr(ticket, "tags") and ticket.tags:
-                if any(tag in ["sales", "lead", "hot_lead"] for tag in ticket.tags):
-                    continue
-            customer_visible_tickets.append(ticket)
+        customer_visible_tickets = filter_customer_visible_tickets(tickets)
 
         if not customer_visible_tickets:
             return f"I didn't find any existing support tickets for {customer_email}. How can I help you today?"
 
-        ticket_list = []
-        for i, ticket in enumerate(
-            customer_visible_tickets[:5], 1
-        ):  # Show max 5 recent tickets
-            status_emoji = {
-                "new": "🆕",
-                "open": "📂",
-                "pending": "⏳",
-                "hold": "⏸️",
-                "solved": "✅",
-                "closed": "📁",
-            }.get(ticket.status, "📄")
-
-            ticket_list.append(
-                f"{i}. {status_emoji} Ticket #{ticket.id}: {ticket.subject} ({ticket.status.upper()})"
-            )
-
-        if len(customer_visible_tickets) > 5:
-            ticket_list.append(
-                f"... and {len(customer_visible_tickets) - 5} more tickets"
-            )
+        ticket_display = format_ticket_list(customer_visible_tickets)
 
         response = f"""Great! I found your account. You have {len(customer_visible_tickets)} support ticket(s) with TeleCorp:
 
-{chr(10).join(ticket_list)}
+{ticket_display}
 
 Would you like to:
 • Discuss one of these existing tickets (just tell me the number)
@@ -302,27 +400,14 @@ async def get_ticket_details(ticket_id: str, customer_email: str) -> str:
             if not ticket:
                 return f"I couldn't find ticket #{ticket_id}. Please double-check the ticket number."
 
-        status_emoji = {
-            "new": "🆕 New",
-            "open": "📂 Open",
-            "pending": "⏳ Pending",
-            "hold": "⏸️ On Hold",
-            "solved": "✅ Solved",
-            "closed": "📁 Closed",
-        }.get(ticket.status, f"📄 {ticket.status.title()}")
-
-        priority_emoji = {
-            "low": "🔵 Low",
-            "normal": "🟢 Normal",
-            "high": "🟡 High",
-            "urgent": "🔴 Urgent",
-        }.get(ticket.priority, f"📋 {ticket.priority.title()}")
+        status_display = get_status_display(ticket.status)
+        priority_display = get_priority_display(ticket.priority)
 
         response = f"""Here are the details for Ticket #{ticket.id}:
 
 **Subject:** {ticket.subject}
-**Status:** {status_emoji}
-**Priority:** {priority_emoji}
+**Status:** {status_display}
+**Priority:** {priority_display}
 **Created:** {ticket.created_at.strftime('%B %d, %Y at %I:%M %p') if ticket.created_at else 'Unknown'}
 
 **Original Request:**
