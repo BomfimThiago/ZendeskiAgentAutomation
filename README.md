@@ -99,5 +99,3 @@ The `telecorpBaseKnowledge/` folder contains TeleCorp company information and do
 - Company background and story
 - Service plans and pricing
 - FAQ and troubleshooting guides
-
-**Note**: PDF files in the knowledge base are not tracked in git (local development only).
