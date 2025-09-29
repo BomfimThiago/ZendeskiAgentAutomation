@@ -2,6 +2,122 @@
 
 A sales-focused, multi-agent customer support system built with LangGraph that handles customer inquiries, generates leads, and manages support tickets through Zendesk integration.
 
+## Setup Instructions
+
+### Prerequisites
+
+- Python 3.10 or higher
+- OpenAI API key
+- Zendesk account with API credentials
+
+### 1. Install uv Package Manager
+
+uv is a fast Python package manager. Install it using one of these methods:
+
+**macOS/Linux:**
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**Windows:**
+```powershell
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+**Alternative (using pip):**
+```bash
+pip install uv
+```
+
+### 2. Clone the Repository
+
+```bash
+git clone <repository-url>
+cd ZendeskiAgentAutomation
+```
+
+### 3. Create Virtual Environment
+
+Using uv to create and activate a virtual environment:
+
+```bash
+# Create virtual environment
+uv venv
+
+# Activate virtual environment
+# On macOS/Linux:
+source .venv/bin/activate
+
+# On Windows:
+.venv\Scripts\activate
+```
+
+### 4. Install Dependencies
+
+```bash
+# Install all project dependencies
+uv pip install -r requirements.txt
+
+# Or if using pyproject.toml:
+uv pip install -e .
+```
+
+### 5. Set Up Environment Variables
+
+Create a `.env` file in the project root:
+
+```bash
+# OpenAI Configuration
+OPENAI_API_KEY=your_openai_api_key_here
+
+# Zendesk Configuration
+ZENDESK_SUBDOMAIN=your_subdomain
+ZENDESK_EMAIL=your_email@example.com
+ZENDESK_API_TOKEN=your_zendesk_api_token
+```
+
+### 6. Set Up Knowledge Base
+
+Ensure the knowledge base directory exists with required documents:
+
+```bash
+mkdir -p telecorpBaseKnowledge
+```
+
+Add your knowledge base files (PDFs, text files) to this directory:
+- Plans and pricing documents
+- Technical guides
+- FAQs
+- Company information
+
+### 7. Run the Project
+
+Run the chat frontend to test the AI agent:
+
+```bash
+python3 chat_frontend.py
+```
+
+Or run from the project root:
+
+```bash
+python3 -m src.integrations.zendesk.langgraph_agent.chat_frontend
+```
+
+### 8. Verify Setup
+
+The system should:
+- Connect to OpenAI API successfully
+- Load knowledge base documents
+- Initialize LangGraph with all agent nodes
+- Start interactive chat interface
+
+If you encounter issues, check:
+- Environment variables are set correctly
+- Virtual environment is activated
+- All dependencies are installed
+- Knowledge base directory exists
+
 ## Architecture Overview
 
 ```
