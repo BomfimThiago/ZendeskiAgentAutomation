@@ -126,6 +126,8 @@ def _select_relevant_chunks(chunks: List[str], max_chars: int) -> str:
         "promotion",
         "offer",
         "installation",
+        "mobile",
+        "phone",
         "speed",
         "mbps",
         "gbps",
