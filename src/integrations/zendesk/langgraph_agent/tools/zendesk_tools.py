@@ -109,13 +109,14 @@ async def create_sales_ticket(
     customer_message: str,
     customer_name: str,
     customer_email: str,
+    customer_phone: str = "",
     interest_level: str = "medium",
     conversation_summary: str = "",
 ) -> str:
     """
     Create a high-priority sales ticket for interested customers.
 
-    IMPORTANT: Always collect customer name and email before using this tool.
+    IMPORTANT: Always collect customer name, email, and phone before using this tool.
     If you don't have this information, ask the customer for it first.
 
     Use this tool when customers show interest in purchasing TeleCorp services.
@@ -124,6 +125,7 @@ async def create_sales_ticket(
         customer_message: Customer's sales inquiry or interest
         customer_name: Customer's full name (REQUIRED)
         customer_email: Customer's email address for follow-up (REQUIRED)
+        customer_phone: Customer's phone number for direct contact (RECOMMENDED)
         interest_level: Customer interest level - 'low', 'medium', or 'high'
         conversation_summary: Summary of what the customer is looking for
 
@@ -142,9 +144,18 @@ Could you please provide:
 Once I have this information, I'll prioritize your sales inquiry and get you connected with our best specialists!"""
 
         if not customer_email:
-            return f"""Great to meet you, {customer_name}! I'm excited to help you find the perfect TeleCorp solution. To ensure our sales team can follow up with personalized pricing and options, I'll need your email address.
+            return f"""Great to meet you, {customer_name}! I'm excited to help you find the perfect TeleCorp solution. To ensure our sales team can follow up with personalized pricing and options, I'll need your email address and phone number.
 
-Could you please provide your email? Once I have that, I'll create a high-priority sales ticket and you'll hear from our specialists within hours!"""
+Could you please provide:
+• Your email address
+• Your phone number
+
+Once I have this information, I'll create a high-priority sales ticket and you'll hear from our specialists within hours!"""
+
+        if not customer_phone:
+            return f"""Perfect, {customer_name}! I have your email ({customer_email}). For the best sales experience, I'd also like to get your phone number so our sales specialists can reach you directly for faster service.
+
+Could you please provide your phone number? This ensures you get the quickest response from our team!"""
         # Prepare sales context
         sales_context = f"""
             Interest Level: {interest_level}
@@ -160,6 +171,8 @@ Could you please provide your email? Once I have that, I'll create a high-priori
         customer_info = f"Name: {customer_name}"
         if customer_email:
             customer_info += f", Email: {customer_email}"
+        if customer_phone:
+            customer_info += f", Phone: {customer_phone}"
 
         # Get complete ticket data from template manager
         ticket_data = template_manager.get_sales_ticket_data(

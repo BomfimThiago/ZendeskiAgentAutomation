@@ -9,7 +9,12 @@ import os
 from pathlib import Path
 from typing import List, Dict, Any
 from langchain_core.tools import tool
-import pypdf
+
+from .knowledge_utils import (
+    extract_pdf_content_chunked,
+    extract_text_content_chunked,
+    get_knowledge_file_path
+)
 
 
 @tool
@@ -28,7 +33,6 @@ def get_telecorp_plans_pricing() -> str:
         Current TeleCorp plans and pricing information from the knowledge base.
     """
     try:
-        knowledge_base_path = Path("telecorpBaseKnowledge")
         plans_files = [
             "TeleCorp Plans and Services - Complete Guide.pdf",
             "Updated Pricing and Products Table - Agent Reference.pdf"
@@ -37,35 +41,20 @@ def get_telecorp_plans_pricing() -> str:
         plans_content = ""
 
         for filename in plans_files:
-            file_path = knowledge_base_path / filename
-            if file_path.exists():
-                try:
-                    with open(file_path, 'rb') as file:
-                        pdf_reader = pypdf.PdfReader(file)
-                        for page in pdf_reader.pages:
-                            plans_content += page.extract_text() + "\n"
-                except Exception as e:
-                    print(f"Error reading {filename}: {e}")
+            file_path = get_knowledge_file_path(filename)
+            # Extract chunked content (max ~125 tokens per file)
+            file_content = extract_pdf_content_chunked(file_path, max_chars=500)
+            if "Error reading" not in file_content and "File not found" not in file_content:
+                plans_content += f"From {filename}:\n{file_content}\n\n"
 
         if plans_content:
-            # Add guidance for the AI on how to use this information
+            # Add concise guidance for the AI
             return f"""TeleCorp Plans and Pricing Information:
 
 {plans_content}
 
-IMPORTANT FOR SALES ALEX: Use this information to SELL! When used by Sales Alex:
-- Present 2-3 specific plan options based on customer needs
-- ALWAYS mention promotional pricing and savings
-- Highlight competitive advantages and benefits
-- Ask qualifying questions (household size, current provider, budget)
-- Create urgency with limited-time offers
-- Ask which plan they want to start with TODAY
-- Guide them to next steps for signup
-
-IMPORTANT FOR GENERAL ALEX: Use this for basic information only
-- Provide general overview if asked
-- Route sales questions to Sales Alex
-- Don't dive deep into pricing details"""
+SALES GUIDANCE: Present 2-3 specific plans, mention promotions, ask qualifying questions, create urgency, guide to signup.
+GENERAL GUIDANCE: Provide overview only, route detailed sales questions to Sales specialist."""
 
         else:
             return "Unable to access current TeleCorp plans and pricing. Please contact our sales team at 1-800-NEW-PLAN for the latest information."
@@ -89,23 +78,15 @@ def get_telecorp_company_info() -> str:
         TeleCorp company information from the knowledge base.
     """
     try:
-        knowledge_base_path = Path("telecorpBaseKnowledge")
-        company_file = knowledge_base_path / "TeleCorp Company Story.txt"
+        company_file = get_knowledge_file_path("TeleCorp Company Story.txt")
+        company_content = extract_text_content_chunked(company_file, max_chars=500)
 
-        if company_file.exists():
-            with open(company_file, 'r', encoding='utf-8') as file:
-                company_content = file.read()
-
+        if "Error reading" not in company_content and "File not found" not in company_content:
             return f"""TeleCorp Company Information:
 
 {company_content}
 
-IMPORTANT: Use this information to help customers understand TeleCorp conversationally. Share relevant details based on their questions about:
-- Company background and history
-- Our mission and values
-- Service areas and coverage
-- What makes TeleCorp different
-- Contact information when helpful"""
+Use this information conversationally to share relevant details about company background, mission, service areas, and what makes TeleCorp different."""
 
         else:
             return """TeleCorp Company Information:
@@ -127,19 +108,13 @@ def get_telecorp_faq() -> str:
         String containing TeleCorp FAQ and common support topics.
     """
     try:
-        knowledge_base_path = Path("telecorpBaseKnowledge")
-        faq_file = knowledge_base_path / "FAQ" / "TeleCorp Frequently Asked Questions (FAQ).pdf"
+        faq_file = get_knowledge_file_path("TeleCorp Frequently Asked Questions (FAQ).pdf", subfolder="FAQ")
+        faq_content = extract_pdf_content_chunked(faq_file, max_chars=500)
 
-        if faq_file.exists():
-            with open(faq_file, 'rb') as file:
-                pdf_reader = pypdf.PdfReader(file)
-                text = ""
-                for page in pdf_reader.pages:
-                    text += page.extract_text() + "\n"
-
-                return f"# TeleCorp FAQ\n\n{text}"
+        if "Error reading" not in faq_content and "File not found" not in faq_content:
+            return f"# TeleCorp FAQ\n\n{faq_content}"
         else:
-            return "TeleCorp FAQ file not found."
+            return "TeleCorp FAQ not available at this time. Please contact support at 1-800-TELECORP for assistance."
 
     except Exception as e:
         return f"Error accessing TeleCorp FAQ: {str(e)}"
@@ -159,16 +134,16 @@ def search_telecorp_knowledge(query: str) -> str:
     try:
         query_lower = query.lower()
 
-        # Determine what type of information is needed
+        # Determine what type of information is needed and use invoke method
         if any(term in query_lower for term in ['plan', 'price', 'pricing', 'cost', 'package', 'service']):
-            return get_telecorp_plans_pricing()
+            return get_telecorp_plans_pricing.invoke({})
         elif any(term in query_lower for term in ['company', 'about', 'telecorp', 'background', 'story']):
-            return get_telecorp_company_info()
+            return get_telecorp_company_info.invoke({})
         elif any(term in query_lower for term in ['faq', 'question', 'help', 'support', 'how to']):
-            return get_telecorp_faq()
+            return get_telecorp_faq.invoke({})
         else:
             # Default to plans and pricing for sales-related queries
-            return get_telecorp_plans_pricing()
+            return get_telecorp_plans_pricing.invoke({})
 
     except Exception as e:
         return f"Error searching TeleCorp knowledge base: {str(e)}"
@@ -186,16 +161,24 @@ def get_plan_comparison(plan_type: str = "internet") -> str:
         String containing plan comparison information.
     """
     try:
-        plans_info = get_telecorp_plans_pricing()
+        # Use invoke method instead of direct call to avoid deprecation warning
+        plans_info = get_telecorp_plans_pricing.invoke({})
 
         # Extract relevant sections based on plan type
         plan_type_lower = plan_type.lower()
 
         comparison_intro = f"# TeleCorp {plan_type.title()} Plan Comparison\n\n"
 
-        # Add the full plans info for now - in a real implementation,
-        # you would parse and filter the content
-        return comparison_intro + plans_info
+        # Filter content based on plan type
+        if plan_type_lower == "mobile":
+            # Look for mobile-specific content in plans_info
+            if "mobile" in plans_info.lower() or "phone" in plans_info.lower():
+                return comparison_intro + plans_info
+            else:
+                return f"# TeleCorp {plan_type.title()} Plan Comparison\n\nMobile plans information not available in current knowledge base. Please contact our sales team at 1-800-NEW-PLAN for mobile plan details."
+        else:
+            # Return full plans info for internet and other types
+            return comparison_intro + plans_info
 
     except Exception as e:
         return f"Error getting plan comparison for {plan_type}: {str(e)}"
@@ -216,27 +199,15 @@ def get_internet_speed_guide() -> str:
         Complete guide for internet speed testing and troubleshooting.
     """
     try:
-        knowledge_base_path = Path("telecorpBaseKnowledge")
-        speed_guide_file = knowledge_base_path / "How to Check Your Internet Speed - Complete Guide.pdf"
+        speed_guide_file = get_knowledge_file_path("How to Check Your Internet Speed - Complete Guide.pdf")
+        speed_guide_content = extract_pdf_content_chunked(speed_guide_file, max_chars=500)
 
-        if speed_guide_file.exists():
-            with open(speed_guide_file, 'rb') as file:
-                pdf_reader = pypdf.PdfReader(file)
-                speed_guide_content = ""
-                for page in pdf_reader.pages:
-                    speed_guide_content += page.extract_text() + "\n"
-
+        if "Error reading" not in speed_guide_content and "File not found" not in speed_guide_content:
             return f"""Internet Speed Troubleshooting Guide:
 
 {speed_guide_content}
 
-IMPORTANT for Technical Support:
-- Walk customer through speed testing steps
-- Ask "Have you tried checking your speed at speedtest.net?"
-- Ask "Are you connected via WiFi or ethernet cable?"
-- Ask "How many devices are currently using the internet?"
-- Provide step-by-step guidance from this guide
-- After troubleshooting, create support ticket if issue persists"""
+SUPPORT GUIDANCE: Walk customer through testing steps, ask about WiFi/ethernet, device count, provide step-by-step guidance. Create ticket if issue persists."""
 
         else:
             return "Internet speed guide not available. Please contact technical support at 1-800-TECH-TEL for speed troubleshooting assistance."
@@ -260,28 +231,15 @@ def get_router_configuration_guide() -> str:
         Complete guide for router configuration and troubleshooting.
     """
     try:
-        knowledge_base_path = Path("telecorpBaseKnowledge")
-        router_guide_file = knowledge_base_path / "How to Configure Your Router - Complete Guide.pdf"
+        router_guide_file = get_knowledge_file_path("How to Configure Your Router - Complete Guide.pdf")
+        router_guide_content = extract_pdf_content_chunked(router_guide_file, max_chars=500)
 
-        if router_guide_file.exists():
-            with open(router_guide_file, 'rb') as file:
-                pdf_reader = pypdf.PdfReader(file)
-                router_guide_content = ""
-                for page in pdf_reader.pages:
-                    router_guide_content += page.extract_text() + "\n"
-
+        if "Error reading" not in router_guide_content and "File not found" not in router_guide_content:
             return f"""Router Configuration Troubleshooting Guide:
 
 {router_guide_content}
 
-IMPORTANT for Technical Support:
-- Ask "What type of router do you have?"
-- Ask "Can you see any lights on your router? What colors?"
-- Ask "Have you tried unplugging the router for 30 seconds?"
-- Ask "Are you able to connect other devices to WiFi?"
-- Walk through router reset steps if needed
-- Provide step-by-step configuration guidance
-- After troubleshooting, create support ticket if issue persists"""
+SUPPORT GUIDANCE: Ask about router type, lights/colors, power cycle attempts, other device connectivity. Walk through reset steps and configuration. Create ticket if issue persists."""
 
         else:
             return "Router configuration guide not available. Please contact technical support at 1-800-TECH-TEL for router assistance."
@@ -305,12 +263,12 @@ def get_technical_troubleshooting_steps(issue_type: str) -> str:
         issue_type_lower = issue_type.lower()
 
         if "speed" in issue_type_lower:
-            return get_internet_speed_guide()
+            return get_internet_speed_guide.invoke({})
         elif any(term in issue_type_lower for term in ["router", "wifi", "connection"]):
-            return get_router_configuration_guide()
+            return get_router_configuration_guide.invoke({})
         else:
             # Get general FAQ for other issues
-            return get_telecorp_faq()
+            return get_telecorp_faq.invoke({})
 
     except Exception as e:
         return f"Error getting troubleshooting steps: {str(e)}. Please contact technical support at 1-800-TECH-TEL."

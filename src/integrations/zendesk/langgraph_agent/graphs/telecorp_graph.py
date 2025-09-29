@@ -18,6 +18,11 @@ from src.integrations.zendesk.langgraph_agent.nodes.conversation_router import s
 from src.integrations.zendesk.langgraph_agent.nodes.support_agent import support_agent_node
 from src.integrations.zendesk.langgraph_agent.nodes.sales_agent import sales_agent_node
 from src.integrations.zendesk.langgraph_agent.nodes.billing_agent import billing_agent_node
+from src.integrations.zendesk.langgraph_agent.nodes.guardrail_node import (
+    input_validation_node,
+    output_sanitization_node,
+    should_continue_after_validation
+)
 from src.integrations.zendesk.langgraph_agent.config.langgraph_config import telecorp_config
 from src.core.config import settings, setup_langsmith
 
@@ -62,22 +67,35 @@ def create_telecorp_graph():
     Create TeleCorp customer support workflow with supervisor routing pattern.
 
     Following LangGraph best practices:
-    1. Supervisor analyzes customer needs and routes to appropriate agent
-    2. Each agent specializes in their domain (support, sales, billing)
-    3. Plan-and-execute pattern handled by individual agents
-    4. Message-based state management with session persistence
+    1. Input validation to prevent prompt injection and out-of-scope queries
+    2. Supervisor analyzes customer needs and routes to appropriate agent
+    3. Each agent specializes in their domain (support, sales, billing)
+    4. Output sanitization to remove sensitive information
+    5. Message-based state management with session persistence
     """
 
     graph = StateGraph(ConversationState)
 
-    # Add all nodes
+    # Add all nodes including security nodes
+    graph.add_node("input_validation", input_validation_node)
     graph.add_node("supervisor", supervisor_agent_node)
     graph.add_node("support_agent", support_agent_node)
     graph.add_node("sales_agent", sales_agent_node)
     graph.add_node("billing_agent", billing_agent_node)
+    graph.add_node("output_sanitization", output_sanitization_node)
 
-    # Set supervisor as entry point - Alex greets and routes customers
-    graph.set_entry_point("supervisor")
+    # Set input validation as entry point - ALL messages go through security first
+    graph.set_entry_point("input_validation")
+
+    # Input validation routes to supervisor or output sanitization if blocked
+    graph.add_conditional_edges(
+        "input_validation",
+        should_continue_after_validation,
+        {
+            "supervisor": "supervisor",
+            "sanitize": "output_sanitization"
+        }
+    )
 
     # Supervisor routes to appropriate agent based on customer needs
     graph.add_conditional_edges(
@@ -87,14 +105,17 @@ def create_telecorp_graph():
             "support_agent": "support_agent",
             "sales_agent": "sales_agent",
             "billing_agent": "billing_agent",
-            END: END
+            END: "output_sanitization"  # Always sanitize before ending
         }
     )
 
-    # All agents return to END after handling the customer
-    graph.add_edge("support_agent", END)
-    graph.add_edge("sales_agent", END)
-    graph.add_edge("billing_agent", END)
+    # All agents go through output sanitization before ending
+    graph.add_edge("support_agent", "output_sanitization")
+    graph.add_edge("sales_agent", "output_sanitization")
+    graph.add_edge("billing_agent", "output_sanitization")
+
+    # Output sanitization is the final node before END
+    graph.add_edge("output_sanitization", END)
 
     # Compile with checkpointer for state persistence
     checkpointer = MemorySaver()

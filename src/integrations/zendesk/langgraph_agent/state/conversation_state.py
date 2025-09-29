@@ -33,5 +33,9 @@ class ConversationState(TypedDict):
     step_results: Optional[Dict[int, str]]  # Results from each step execution
     plan_complete: Optional[bool] # Whether the plan is fully executed
 
+    # Security fields
+    security_blocked: Optional[bool]  # True if message was blocked
+    threat_type: Optional[str]  # Type of threat detected (e.g., "prompt_injection")
+
     # Minimal metadata
     metadata: Dict[str, Any]

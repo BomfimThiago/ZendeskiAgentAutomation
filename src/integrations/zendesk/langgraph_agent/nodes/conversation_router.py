@@ -27,31 +27,55 @@ async def supervisor_agent_node(state: ConversationState) -> ConversationState:
             last_human_message = msg
             break
 
+    # Use cheaper model for routing decisions to save tokens
     supervisor_llm = ChatOpenAI(
         api_key=telecorp_config.OPENAI_API_KEY,
-        model="gpt-4",
+        model="gpt-3.5-turbo-1106",  # Cheaper, faster, good for routing
         temperature=0.1,
-        max_tokens=1000
+        max_tokens=500  # Reduced from 1000
     ).bind_tools(telecorp_tools)
 
     client_already_identified = state.get("is_existing_client") is not None
 
-    if not client_already_identified:
-        needs_routing = False
-    elif last_human_message:
+    if last_human_message:
+        # Check customer status for enhanced routing
+        client_status = state.get("is_existing_client")
+        if client_status is None:
+            customer_type = "UNKNOWN (not identified yet)"
+        elif client_status == False:
+            customer_type = "NEW CUSTOMER"
+        else:
+            customer_type = "EXISTING CUSTOMER"
+
         routing_analysis_prompt = f"""Analyze if this customer message needs specialist routing or just friendly conversation.
 
 Customer message: "{last_human_message.content}"
+Customer type: {customer_type}
+
+CRITICAL SALES ROUTING RULES (applies to ALL customers):
+- ANY customer asking about services/plans/pricing/upgrades → ALWAYS ROUTE to sales
+- NEW CUSTOMERS asking about any services → ROUTE to sales (lead capture)
+- EXISTING CUSTOMERS asking about new/additional services → ROUTE to sales (upselling opportunity)
+- EXISTING CUSTOMERS asking about upgrades/downgrades → ROUTE to sales
+- UNKNOWN customers asking about services → ROUTE to sales (potential leads)
 
 Does this need a specialist?
-- ROUTE if: Technical issues, specific billing problems, detailed plan/pricing questions, service cancellations
-- CONVERSATION if: Greetings, introductions, small talk, general questions
+- ROUTE TO SALES if: Plans, pricing, services, packages, upgrades, new services, "what do you offer", service comparisons, "interested in", "tell me about", "looking for"
+- ROUTE TO SUPPORT if: Technical issues, internet down, speed problems, router issues
+- ROUTE TO BILLING if: Payment issues, account problems, cancellations, billing questions
+- CONVERSATION if: ONLY pure greetings/small talk with NO service inquiry
 
 Examples:
 - "My internet is down" → ROUTE to support
 - "I want to cancel my service" → ROUTE to billing
 - "What plans do you offer?" → ROUTE to sales
-- "Hi, how are you?" → CONVERSATION
+- "I want to know your services" → ROUTE to sales
+- "Tell me about residential plans" → ROUTE to sales
+- "I want to upgrade my plan" → ROUTE to sales
+- "What other services do you have?" → ROUTE to sales
+- "I'm interested in your internet plans" → ROUTE to sales
+- "Hi, I'm new to TeleCorp" (if followed by service inquiry) → ROUTE to sales
+- "Hi, how are you?" → CONVERSATION (only if no service inquiry)
 
 Respond with exactly: CONVERSATION or ROUTE"""
 
@@ -74,32 +98,39 @@ Respond with exactly: CONVERSATION or ROUTE"""
         )
 
         if not client_already_identified:
-            # Client identification must happen FIRST - regardless of what they ask about
-            conversation_prompt = """You are Alex, a friendly TeleCorp customer support supervisor.
+            conversation_prompt = """You are Alex, a friendly TeleCorp customer support representative. You have a natural, conversational style.
 
-**CRITICAL - Client Identification MUST Happen First:**
-Before helping with ANY issue, you MUST determine client status.
+**YOUR APPROACH:**
+Respond naturally to what the customer actually said. Read their message carefully and respond appropriately.
 
-If customer mentions a problem/issue WITHOUT identifying themselves:
-1. Acknowledge their concern briefly: "I understand you have [their issue], and I'll help you with that."
-2. IMMEDIATELY ask: "To provide you with the best personalized service, are you an existing TeleCorp customer, or are you interested in learning about our services?"
+**CONVERSATION FLOW:**
+1. **For greetings/introductions** (like "hi", "hello", "hey there", "I'm [name]"):
+   - Respond warmly and personally
+   - Welcome them naturally
+   - Then ask about their customer status to provide personalized service
 
-**If they say EXISTING CUSTOMER:**
-- Ask for their email: "Could you provide your email so I can look up your account?"
-- Use get_user_tickets tool with their email
-- Present their tickets if found
-- Then address their current issue
+2. **For specific problems/requests** (like "my internet is down", "I want to cancel"):
+   - Acknowledge their specific concern
+   - Let them know you'll help
+   - Ask about customer status to provide the right level of service
 
-**If they say NEW/INTERESTED:**
-- Welcome them and help with their question
-- Route appropriately based on their needs
+3. **For service inquiries** (like "tell me about plans", "what services"):
+   - Show enthusiasm about helping with their inquiry
+   - Ask about customer status to provide relevant information
 
-**Available Tools:**
-- get_user_tickets: Look up tickets by email
-- get_ticket_details: Get specific ticket info
-- All knowledge tools
+**CUSTOMER STATUS QUESTION:**
+Always ask: "To provide you with the best personalized service, are you an existing TeleCorp customer, or are you interested in learning about our services?"
 
-**REMEMBER:** Client identification ALWAYS comes first - even if they have urgent issues!"""
+**FOR EXISTING CUSTOMERS:**
+- Ask for email to look up their account
+- Use get_user_tickets tool
+- Provide personalized service based on their history
+
+**FOR NEW/INTERESTED CUSTOMERS:**
+- Welcome them warmly
+- Focus on helping with their specific interest
+
+**KEY PRINCIPLE:** Match your response to what they actually said. Be natural, not robotic."""
         else:
             # Regular conversation for identified clients or ongoing chats
             conversation_prompt = """You are Alex, a friendly TeleCorp customer support supervisor.
