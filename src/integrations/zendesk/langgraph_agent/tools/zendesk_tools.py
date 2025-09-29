@@ -45,7 +45,6 @@ async def create_support_ticket(
         Confirmation message with ticket ID and next steps, or request for missing info
     """
     try:
-        # Validate required information
         if not customer_name or customer_name == "TeleCorp Customer":
             return """I'd be happy to create a support ticket for you! To ensure our team can follow up properly, I'll need to get some information from you first.
 
@@ -59,7 +58,7 @@ Once I have this information, I'll create your support ticket right away."""
             return f"""Thanks, {customer_name}! I have your name, but I'll also need your email address so our support team can follow up with you directly.
 
 Could you please provide your email address? Once I have that, I'll create your support ticket immediately."""
-        # Prepare customer and request data
+
         customer_info = f"Name: {customer_name}"
         if customer_email:
             customer_info += f", Email: {customer_email}"
@@ -68,21 +67,18 @@ Could you please provide your email address? Once I have that, I'll create your 
         if conversation_context:
             request_summary += f"\n\nAdditional Context:\n{conversation_context}"
 
-        # Get complete ticket data from template manager
         ticket_data = template_manager.get_support_ticket_data(
             ticket_type=ticket_type,
             customer_info=customer_info,
             request_summary=request_summary,
         )
 
-        # Validate priority or use default from template
         final_priority = (
             priority
             if priority in ["low", "normal", "high", "urgent"]
             else ticket_data["priority"]
         )
 
-        # Use existing Zendesk service to create ticket
         async with await get_zendesk_client() as zendesk_client:
             ticket_service = TicketService(zendesk_client)
 
@@ -96,7 +92,6 @@ Could you please provide your email address? Once I have that, I'll create your 
                 tags=ticket_data["tags"],
             )
 
-        # Return appropriate response message
         return template_manager.get_customer_response(ticket_type, created_ticket.id)
 
     except Exception as e:
@@ -133,7 +128,6 @@ async def create_sales_ticket(
         Confirmation message optimized for sales follow-up, or request for missing info
     """
     try:
-        # Validate required information
         if not customer_name or customer_name == "Prospective Customer":
             return """I'm excited to help you with TeleCorp services! To ensure our sales team can provide you with personalized assistance and follow up properly, I'll need to get some information from you first.
 
@@ -156,7 +150,7 @@ Once I have this information, I'll create a high-priority sales ticket and you'l
             return f"""Perfect, {customer_name}! I have your email ({customer_email}). For the best sales experience, I'd also like to get your phone number so our sales specialists can reach you directly for faster service.
 
 Could you please provide your phone number? This ensures you get the quickest response from our team!"""
-        # Prepare sales context
+
         sales_context = f"""
             Interest Level: {interest_level}
             Conversation Summary: {conversation_summary}
@@ -167,14 +161,12 @@ Could you please provide your phone number? This ensures you get the quickest re
             - Opportunity for immediate conversion
         """
 
-        # Prepare customer and request data
         customer_info = f"Name: {customer_name}"
         if customer_email:
             customer_info += f", Email: {customer_email}"
         if customer_phone:
             customer_info += f", Phone: {customer_phone}"
 
-        # Get complete ticket data from template manager
         ticket_data = template_manager.get_sales_ticket_data(
             customer_info=customer_info,
             request_summary=customer_message,
@@ -182,7 +174,6 @@ Could you please provide your phone number? This ensures you get the quickest re
             interest_level=interest_level,
         )
 
-        # Use existing Zendesk service to create ticket
         async with await get_zendesk_client() as zendesk_client:
             ticket_service = TicketService(zendesk_client)
 
@@ -196,7 +187,6 @@ Could you please provide your phone number? This ensures you get the quickest re
                 tags=ticket_data["tags"],
             )
 
-        # Return sales-specific response message
         return template_manager.get_customer_response("sales", created_ticket.id)
 
     except Exception as e:
@@ -223,26 +213,21 @@ async def get_user_tickets(customer_email: str) -> str:
         if not customer_email:
             return "I'll need your email address to look up your tickets. Could you please provide your email?"
 
-        # Use existing Zendesk service to search for tickets by email
         async with await get_zendesk_client() as zendesk_client:
             ticket_service = TicketService(zendesk_client)
-
-            # Use efficient search method instead of filtering all tickets
             tickets = await ticket_service.search_tickets_by_email(customer_email)
 
         if not tickets:
             return f"I didn't find any existing tickets for {customer_email}. You appear to be a new customer or haven't contacted support before. How can I help you today?"
 
-        # Filter out sales/lead tickets - customers should only see support and billing tickets
         customer_visible_tickets = []
         for ticket in tickets:
-            # Skip tickets with sales/lead tags or subjects
             if any(
                 tag in ticket.subject.upper()
                 for tag in ["[SALES]", "[HOT LEAD]", "[LEAD]"]
             ):
                 continue
-            # Also check tags if available
+
             if hasattr(ticket, "tags") and ticket.tags:
                 if any(tag in ["sales", "lead", "hot_lead"] for tag in ticket.tags):
                     continue
@@ -251,7 +236,6 @@ async def get_user_tickets(customer_email: str) -> str:
         if not customer_visible_tickets:
             return f"I didn't find any existing support tickets for {customer_email}. How can I help you today?"
 
-        # Format tickets for presentation
         ticket_list = []
         for i, ticket in enumerate(
             customer_visible_tickets[:5], 1
@@ -311,17 +295,13 @@ async def get_ticket_details(ticket_id: str, customer_email: str) -> str:
         if not ticket_id or not customer_email:
             return "I'll need both the ticket ID and your email address to look up the ticket details."
 
-        # Use existing Zendesk service to get ticket details
         async with await get_zendesk_client() as zendesk_client:
             ticket_service = TicketService(zendesk_client)
-
-            # Get the specific ticket
             ticket = await ticket_service.get_ticket_by_id(int(ticket_id))
 
             if not ticket:
                 return f"I couldn't find ticket #{ticket_id}. Please double-check the ticket number."
 
-        # Format ticket details for presentation
         status_emoji = {
             "new": "🆕 New",
             "open": "📂 Open",

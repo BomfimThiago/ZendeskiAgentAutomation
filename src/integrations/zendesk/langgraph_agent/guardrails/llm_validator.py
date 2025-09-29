@@ -11,7 +11,9 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from .input_validator import ThreatLevel, ViolationType
-from src.integrations.zendesk.langgraph_agent.config.langgraph_config import telecorp_config
+from src.integrations.zendesk.langgraph_agent.config.langgraph_config import (
+    telecorp_config,
+)
 
 
 class LLMGuardrailValidator:
@@ -22,10 +24,12 @@ class LLMGuardrailValidator:
             api_key=telecorp_config.OPENAI_API_KEY,
             model="gpt-3.5-turbo",  # Use faster, cheaper model for guardrails
             temperature=0.0,  # Deterministic responses for security
-            max_tokens=100    # Short responses for classification
+            max_tokens=100,  # Short responses for classification
         )
 
-    async def validate_input(self, user_input: str) -> Tuple[ThreatLevel, Optional[ViolationType], str]:
+    async def validate_input(
+        self, user_input: str
+    ) -> Tuple[ThreatLevel, Optional[ViolationType], str]:
         """
         Validate user input using LLM-based guardrail prompts.
 
@@ -106,7 +110,7 @@ Classify this user input:"""
         try:
             messages = [
                 SystemMessage(content=security_prompt),
-                HumanMessage(content=f"User input: {user_input}")
+                HumanMessage(content=f"User input: {user_input}"),
             ]
 
             response = await self.llm.ainvoke(messages)
@@ -122,24 +126,24 @@ Classify this user input:"""
                 category_mapping = {
                     "JAILBREAK": (
                         ViolationType.JAILBREAK_ATTEMPT,
-                        "I'm Alex from TeleCorp customer support, and I maintain consistent professional standards in all interactions. I'm here to help with TeleCorp services within appropriate guidelines. What TeleCorp service can I assist you with today?"
+                        "I'm Alex from TeleCorp customer support, and I maintain consistent professional standards in all interactions. I'm here to help with TeleCorp services within appropriate guidelines. What TeleCorp service can I assist you with today?",
                     ),
                     "PROMPT_INJECTION": (
                         ViolationType.PROMPT_INJECTION,
-                        "I notice an attempt to modify my behavior. I'm designed to provide reliable TeleCorp customer support and maintain that focus. How can I help you with your TeleCorp account or services?"
+                        "I notice an attempt to modify my behavior. I'm designed to provide reliable TeleCorp customer support and maintain that focus. How can I help you with your TeleCorp account or services?",
                     ),
                     "INAPPROPRIATE": (
                         ViolationType.INAPPROPRIATE_CONTENT,
-                        "I maintain professional customer service standards in all interactions. I'm here to help with TeleCorp services. What can I assist you with regarding your TeleCorp account?"
+                        "I maintain professional customer service standards in all interactions. I'm here to help with TeleCorp services. What can I assist you with regarding your TeleCorp account?",
                     ),
                     "COMPETITOR": (
                         ViolationType.COMPETITOR_DISCUSSION,
-                        "I focus exclusively on TeleCorp services and can provide detailed information about our excellent offerings. What type of TeleCorp service interests you?"
+                        "I focus exclusively on TeleCorp services and can provide detailed information about our excellent offerings. What type of TeleCorp service interests you?",
                     ),
                     "OUT_OF_SCOPE": (
                         ViolationType.SCOPE_VIOLATION,
-                        "I'm Alex from TeleCorp customer support, specialized in helping with TeleCorp services. For that type of question, I'd recommend other resources. Do you have any other questions about TeleCorp services?"
-                    )
+                        "I'm Alex from TeleCorp customer support, specialized in helping with TeleCorp services. For that type of question, I'd recommend other resources. Do you have any other questions about TeleCorp services?",
+                    ),
                 }
 
                 if category in category_mapping:
@@ -150,7 +154,7 @@ Classify this user input:"""
                     return (
                         ThreatLevel.BLOCKED,
                         ViolationType.SCOPE_VIOLATION,
-                        "I'm Alex from TeleCorp customer support, specialized in helping with TeleCorp services. How can I help you with your TeleCorp services today?"
+                        "I'm Alex from TeleCorp customer support, specialized in helping with TeleCorp services. How can I help you with your TeleCorp services today?",
                     )
 
             else:

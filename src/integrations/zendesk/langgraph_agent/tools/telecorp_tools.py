@@ -13,7 +13,7 @@ from langchain_core.tools import tool
 from .knowledge_utils import (
     extract_pdf_content_chunked,
     extract_text_content_chunked,
-    get_knowledge_file_path
+    get_knowledge_file_path,
 )
 
 
@@ -35,20 +35,21 @@ def get_telecorp_plans_pricing() -> str:
     try:
         plans_files = [
             "TeleCorp Plans and Services - Complete Guide.pdf",
-            "Updated Pricing and Products Table - Agent Reference.pdf"
+            "Updated Pricing and Products Table - Agent Reference.pdf",
         ]
 
         plans_content = ""
 
         for filename in plans_files:
             file_path = get_knowledge_file_path(filename)
-            # Extract chunked content (max ~125 tokens per file)
             file_content = extract_pdf_content_chunked(file_path, max_chars=500)
-            if "Error reading" not in file_content and "File not found" not in file_content:
+            if (
+                "Error reading" not in file_content
+                and "File not found" not in file_content
+            ):
                 plans_content += f"From {filename}:\n{file_content}\n\n"
 
         if plans_content:
-            # Add concise guidance for the AI
             return f"""TeleCorp Plans and Pricing Information:
 
 {plans_content}
@@ -81,7 +82,10 @@ def get_telecorp_company_info() -> str:
         company_file = get_knowledge_file_path("TeleCorp Company Story.txt")
         company_content = extract_text_content_chunked(company_file, max_chars=500)
 
-        if "Error reading" not in company_content and "File not found" not in company_content:
+        if (
+            "Error reading" not in company_content
+            and "File not found" not in company_content
+        ):
             return f"""TeleCorp Company Information:
 
 {company_content}
@@ -108,7 +112,9 @@ def get_telecorp_faq() -> str:
         String containing TeleCorp FAQ and common support topics.
     """
     try:
-        faq_file = get_knowledge_file_path("TeleCorp Frequently Asked Questions (FAQ).pdf", subfolder="FAQ")
+        faq_file = get_knowledge_file_path(
+            "TeleCorp Frequently Asked Questions (FAQ).pdf", subfolder="FAQ"
+        )
         faq_content = extract_pdf_content_chunked(faq_file, max_chars=500)
 
         if "Error reading" not in faq_content and "File not found" not in faq_content:
@@ -134,15 +140,22 @@ def search_telecorp_knowledge(query: str) -> str:
     try:
         query_lower = query.lower()
 
-        # Determine what type of information is needed and use invoke method
-        if any(term in query_lower for term in ['plan', 'price', 'pricing', 'cost', 'package', 'service']):
+        if any(
+            term in query_lower
+            for term in ["plan", "price", "pricing", "cost", "package", "service"]
+        ):
             return get_telecorp_plans_pricing.invoke({})
-        elif any(term in query_lower for term in ['company', 'about', 'telecorp', 'background', 'story']):
+        elif any(
+            term in query_lower
+            for term in ["company", "about", "telecorp", "background", "story"]
+        ):
             return get_telecorp_company_info.invoke({})
-        elif any(term in query_lower for term in ['faq', 'question', 'help', 'support', 'how to']):
+        elif any(
+            term in query_lower
+            for term in ["faq", "question", "help", "support", "how to"]
+        ):
             return get_telecorp_faq.invoke({})
         else:
-            # Default to plans and pricing for sales-related queries
             return get_telecorp_plans_pricing.invoke({})
 
     except Exception as e:
@@ -161,23 +174,16 @@ def get_plan_comparison(plan_type: str = "internet") -> str:
         String containing plan comparison information.
     """
     try:
-        # Use invoke method instead of direct call to avoid deprecation warning
         plans_info = get_telecorp_plans_pricing.invoke({})
-
-        # Extract relevant sections based on plan type
         plan_type_lower = plan_type.lower()
-
         comparison_intro = f"# TeleCorp {plan_type.title()} Plan Comparison\n\n"
 
-        # Filter content based on plan type
         if plan_type_lower == "mobile":
-            # Look for mobile-specific content in plans_info
             if "mobile" in plans_info.lower() or "phone" in plans_info.lower():
                 return comparison_intro + plans_info
             else:
                 return f"# TeleCorp {plan_type.title()} Plan Comparison\n\nMobile plans information not available in current knowledge base. Please contact our sales team at 1-800-NEW-PLAN for mobile plan details."
         else:
-            # Return full plans info for internet and other types
             return comparison_intro + plans_info
 
     except Exception as e:
@@ -199,10 +205,17 @@ def get_internet_speed_guide() -> str:
         Complete guide for internet speed testing and troubleshooting.
     """
     try:
-        speed_guide_file = get_knowledge_file_path("How to Check Your Internet Speed - Complete Guide.pdf")
-        speed_guide_content = extract_pdf_content_chunked(speed_guide_file, max_chars=500)
+        speed_guide_file = get_knowledge_file_path(
+            "How to Check Your Internet Speed - Complete Guide.pdf"
+        )
+        speed_guide_content = extract_pdf_content_chunked(
+            speed_guide_file, max_chars=500
+        )
 
-        if "Error reading" not in speed_guide_content and "File not found" not in speed_guide_content:
+        if (
+            "Error reading" not in speed_guide_content
+            and "File not found" not in speed_guide_content
+        ):
             return f"""Internet Speed Troubleshooting Guide:
 
 {speed_guide_content}
@@ -231,10 +244,17 @@ def get_router_configuration_guide() -> str:
         Complete guide for router configuration and troubleshooting.
     """
     try:
-        router_guide_file = get_knowledge_file_path("How to Configure Your Router - Complete Guide.pdf")
-        router_guide_content = extract_pdf_content_chunked(router_guide_file, max_chars=500)
+        router_guide_file = get_knowledge_file_path(
+            "How to Configure Your Router - Complete Guide.pdf"
+        )
+        router_guide_content = extract_pdf_content_chunked(
+            router_guide_file, max_chars=500
+        )
 
-        if "Error reading" not in router_guide_content and "File not found" not in router_guide_content:
+        if (
+            "Error reading" not in router_guide_content
+            and "File not found" not in router_guide_content
+        ):
             return f"""Router Configuration Troubleshooting Guide:
 
 {router_guide_content}
@@ -284,5 +304,5 @@ telecorp_tools = [
     get_plan_comparison,
     get_internet_speed_guide,
     get_router_configuration_guide,
-    get_technical_troubleshooting_steps
+    get_technical_troubleshooting_steps,
 ] + zendesk_tools_clean

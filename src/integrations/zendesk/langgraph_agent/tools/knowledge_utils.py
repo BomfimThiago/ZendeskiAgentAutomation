@@ -25,28 +25,30 @@ def extract_pdf_content_chunked(file_path: Path, max_chars: int = 2000) -> str:
         if not file_path.exists():
             return f"File not found: {file_path.name}"
 
-        # Use LangChain's PyPDFLoader
         loader = PyPDFLoader(str(file_path))
         documents = loader.load()
 
         if not documents:
             return f"No content extracted from {file_path.name}"
 
-        # Use LangChain's RecursiveCharacterTextSplitter for intelligent chunking
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=max_chars,
             chunk_overlap=200,  # 200 char overlap for context preservation
             length_function=len,
-            separators=["\n\n", "\n", ". ", " ", ""]  # Prioritize paragraph/sentence breaks
+            separators=[
+                "\n\n",
+                "\n",
+                ". ",
+                " ",
+                "",
+            ],  # Prioritize paragraph/sentence breaks
         )
 
-        # Split all documents and get the most relevant chunks
         all_chunks = []
         for doc in documents:
             chunks = text_splitter.split_text(doc.page_content)
             all_chunks.extend(chunks)
 
-        # Return the most relevant chunks (prioritize those with key terms)
         return _select_relevant_chunks(all_chunks, max_chars)
 
     except Exception as e:
@@ -68,22 +70,19 @@ def extract_text_content_chunked(file_path: Path, max_chars: int = 2000) -> str:
         if not file_path.exists():
             return f"File not found: {file_path.name}"
 
-        # Use LangChain's TextLoader
-        loader = TextLoader(str(file_path), encoding='utf-8')
+        loader = TextLoader(str(file_path), encoding="utf-8")
         documents = loader.load()
 
         if not documents:
             return f"No content found in {file_path.name}"
 
-        # Use LangChain's text splitter
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=max_chars,
             chunk_overlap=100,
             length_function=len,
-            separators=["\n\n", "\n", ". ", " ", ""]
+            separators=["\n\n", "\n", ". ", " ", ""],
         )
 
-        # Split and return relevant chunks
         all_chunks = []
         for doc in documents:
             chunks = text_splitter.split_text(doc.page_content)
@@ -109,12 +108,30 @@ def _select_relevant_chunks(chunks: List[str], max_chars: int) -> str:
     if not chunks:
         return "No content available"
 
-    # Score chunks based on relevance (key terms for TeleCorp content)
     key_terms = [
-        'plan', 'price', 'pricing', 'cost', '$', 'month', 'year',
-        'internet', 'service', 'package', 'residential', 'business',
-        'premium', 'unlimited', 'promotion', 'offer', 'installation',
-        'speed', 'mbps', 'gbps', 'fiber', 'wifi', 'router'
+        "plan",
+        "price",
+        "pricing",
+        "cost",
+        "$",
+        "month",
+        "year",
+        "internet",
+        "service",
+        "package",
+        "residential",
+        "business",
+        "premium",
+        "unlimited",
+        "promotion",
+        "offer",
+        "installation",
+        "speed",
+        "mbps",
+        "gbps",
+        "fiber",
+        "wifi",
+        "router",
     ]
 
     scored_chunks = []
@@ -122,24 +139,19 @@ def _select_relevant_chunks(chunks: List[str], max_chars: int) -> str:
         score = 0
         chunk_lower = chunk.lower()
 
-        # Score based on key terms
         for term in key_terms:
             score += chunk_lower.count(term)
 
-        # Bonus for chunks with pricing information
-        if '$' in chunk and ('month' in chunk_lower or 'year' in chunk_lower):
+        if "$" in chunk and ("month" in chunk_lower or "year" in chunk_lower):
             score += 5
 
-        # Bonus for plan/service descriptions
-        if any(word in chunk_lower for word in ['plan', 'package', 'service']):
+        if any(word in chunk_lower for word in ["plan", "package", "service"]):
             score += 3
 
         scored_chunks.append((score, chunk))
 
-    # Sort by score (highest first)
     scored_chunks.sort(key=lambda x: x[0], reverse=True)
 
-    # Combine top-scored chunks within character limit
     result = ""
     current_length = 0
 
@@ -153,9 +165,8 @@ def _select_relevant_chunks(chunks: List[str], max_chars: int) -> str:
         else:
             break
 
-    # If no chunks fit, take the first chunk and truncate
     if not result and chunks:
-        result = chunks[0][:max_chars-50] + "...\n[Content truncated]"
+        result = chunks[0][: max_chars - 50] + "...\n[Content truncated]"
 
     return result or "Content processing error"
 

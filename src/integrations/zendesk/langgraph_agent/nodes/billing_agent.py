@@ -4,8 +4,12 @@ from typing import Dict, Any
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
-from src.integrations.zendesk.langgraph_agent.state.conversation_state import ConversationState
-from src.integrations.zendesk.langgraph_agent.config.langgraph_config import telecorp_config
+from src.integrations.zendesk.langgraph_agent.state.conversation_state import (
+    ConversationState,
+)
+from src.integrations.zendesk.langgraph_agent.config.langgraph_config import (
+    telecorp_config,
+)
 from src.integrations.zendesk.langgraph_agent.tools.telecorp_tools import telecorp_tools
 
 
@@ -17,12 +21,11 @@ async def billing_agent_node(state: ConversationState) -> ConversationState:
     """
     messages = state["messages"]
 
-    # Create billing agent with tools
     billing_llm = ChatOpenAI(
         api_key=telecorp_config.OPENAI_API_KEY,
         model="gpt-4",
         temperature=0.1,
-        max_tokens=600
+        max_tokens=600,
     ).bind_tools(telecorp_tools)
 
     system_prompt = """You are Alex from TeleCorp customer support. You continue the conversation seamlessly - the user doesn't know they've been routed to a specialist.
@@ -78,13 +81,10 @@ If asked about non-TeleCorp topics (like "What's the capital of France?"), respo
 - Maintain TeleCorp's professional and understanding approach"""
 
     try:
-        # Get response from billing agent
-        response = await billing_llm.ainvoke([
-            SystemMessage(content=system_prompt),
-            *messages
-        ])
+        response = await billing_llm.ainvoke(
+            [SystemMessage(content=system_prompt), *messages]
+        )
 
-        # Handle tool calls if any
         if response.tool_calls:
             tool_messages = []
 
@@ -92,11 +92,12 @@ If asked about non-TeleCorp topics (like "What's the capital of France?"), respo
                 tool_name = tool_call["name"]
                 tool_args = tool_call["args"]
 
-                # Add context for billing tickets
-                if tool_name == "create_support_ticket" and "ticket_type" not in tool_args:
+                if (
+                    tool_name == "create_support_ticket"
+                    and "ticket_type" not in tool_args
+                ):
                     tool_args["ticket_type"] = "billing"
 
-                # Find and execute the tool
                 tool_func = None
                 for tool in telecorp_tools:
                     if tool.name == tool_name:
@@ -106,46 +107,46 @@ If asked about non-TeleCorp topics (like "What's the capital of France?"), respo
                 if tool_func:
                     try:
                         tool_result = await tool_func.ainvoke(tool_args)
-                        tool_messages.append({
-                            "role": "tool",
-                            "content": str(tool_result),
-                            "tool_call_id": tool_call["id"]
-                        })
+                        tool_messages.append(
+                            {
+                                "role": "tool",
+                                "content": str(tool_result),
+                                "tool_call_id": tool_call["id"],
+                            }
+                        )
                     except Exception as e:
-                        tool_messages.append({
-                            "role": "tool",
-                            "content": f"I understand your billing concern. Let me connect you with our billing specialists who can access your account and help resolve this issue.",
-                            "tool_call_id": tool_call["id"]
-                        })
+                        tool_messages.append(
+                            {
+                                "role": "tool",
+                                "content": f"I understand your billing concern. Let me connect you with our billing specialists who can access your account and help resolve this issue.",
+                                "tool_call_id": tool_call["id"],
+                            }
+                        )
 
-            # Get final response after tool execution
             if tool_messages:
-                final_response = await billing_llm.ainvoke([
-                    SystemMessage(content=system_prompt),
-                    *messages,
-                    response,
-                    *tool_messages
-                ])
+                final_response = await billing_llm.ainvoke(
+                    [
+                        SystemMessage(content=system_prompt),
+                        *messages,
+                        response,
+                        *tool_messages,
+                    ]
+                )
 
                 return {
                     **state,
-                    "messages": messages + [response] + tool_messages + [final_response]
+                    "messages": messages
+                    + [response]
+                    + tool_messages
+                    + [final_response],
                 }
 
-        # No tools used - direct response
-        return {
-            **state,
-            "messages": messages + [response]
-        }
+        return {**state, "messages": messages + [response]}
 
     except Exception as e:
         print(f"Billing agent error: {e}")
-        # Fallback response
         error_response = AIMessage(
             content="I apologize for the technical difficulty. For immediate billing assistance, please contact our billing department at 1-800-TELECORP, and I'll make sure your account concerns are addressed promptly."
         )
 
-        return {
-            **state,
-            "messages": messages + [error_response]
-        }
+        return {**state, "messages": messages + [error_response]}

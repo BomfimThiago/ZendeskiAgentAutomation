@@ -25,15 +25,13 @@ class SecurityValidator:
     """Handles security validation for messages."""
 
     def __init__(self):
-        # Use GPT-3.5 for fast, efficient validation
         self.validator_llm = ChatOpenAI(
             api_key=telecorp_config.OPENAI_API_KEY,
             model="gpt-3.5-turbo-1106",
-            temperature=0.0,  # Deterministic for security
+            temperature=0.0,
             max_tokens=150,
         )
 
-        # Critical danger patterns (minimal, high-confidence only)
         self.critical_danger_patterns = [
             r"\b(bomb|explosive|weapon|grenade)\s+(instructions?|tutorial|guide|how\s+to)",
             r"\b(hack|breach|exploit)\s+(system|network|account)",
@@ -41,7 +39,6 @@ class SecurityValidator:
             r"\b(illegal\s+drugs|meth|cocaine|heroin)\s+(recipe|instructions?|how\s+to\s+make)",
         ]
 
-        # Compile patterns for efficiency
         self.compiled_danger_patterns = [
             re.compile(pattern, re.IGNORECASE)
             for pattern in self.critical_danger_patterns
@@ -57,7 +54,6 @@ class SecurityValidator:
             Tuple of (is_safe, threat_type, safe_response)
         """
 
-        # Step 1: Quick check for critical danger patterns only (minimal, high-confidence)
         for pattern in self.compiled_danger_patterns:
             if pattern.search(user_message):
                 logger.warning(
@@ -69,7 +65,6 @@ class SecurityValidator:
                     "I cannot provide assistance with harmful or illegal activities. I'm here to help with TeleCorp services. What can I assist you with today?",
                 )
 
-        # Step 2: Advanced LLM-based intent detection and conversation flow analysis
         validation_prompt = f"""<security_analysis>
 You are a security and conversation flow validator for TeleCorp customer support. Your goal is to ensure natural, helpful conversations while protecting against malicious intent.
 
@@ -130,7 +125,6 @@ Respond with ONLY: SAFE, PROMPT_INJECTION, OUT_OF_SCOPE, or INAPPROPRIATE
 
             classification = response.content.strip().upper()
 
-            # Default to safe for any unclear responses
             if classification not in [
                 "PROMPT_INJECTION",
                 "OUT_OF_SCOPE",
@@ -138,10 +132,8 @@ Respond with ONLY: SAFE, PROMPT_INJECTION, OUT_OF_SCOPE, or INAPPROPRIATE
             ]:
                 return (True, "", "")
 
-            # Extract customer name from conversation context for personalized responses
             customer_name = ""
             if conversation_context:
-                # Simple name extraction - look for "I'm [name]" patterns
                 import re
 
                 name_patterns = [
@@ -156,7 +148,6 @@ Respond with ONLY: SAFE, PROMPT_INJECTION, OUT_OF_SCOPE, or INAPPROPRIATE
                         customer_name = match.group(1)
                         break
 
-            # Create personalized responses
             name_part = f"{customer_name}, " if customer_name else ""
 
             if classification == "PROMPT_INJECTION":
@@ -184,7 +175,6 @@ Respond with ONLY: SAFE, PROMPT_INJECTION, OUT_OF_SCOPE, or INAPPROPRIATE
 
         except Exception as e:
             logger.error(f"Validation error: {e}")
-            # Always fail open for better user experience
             return (True, "", "")
 
     def sanitize_output(self, ai_message: str) -> str:
@@ -192,10 +182,8 @@ Respond with ONLY: SAFE, PROMPT_INJECTION, OUT_OF_SCOPE, or INAPPROPRIATE
         Sanitize AI output to remove any leaked information or inappropriate content.
         """
 
-        # Remove potential system prompt leaks
         sanitized = ai_message
 
-        # Remove any text that looks like system instructions
         instruction_patterns = [
             r"system\s*prompt\s*:.*?(?:\n|$)",
             r"instructions?\s*:.*?(?:\n|$)",
@@ -207,7 +195,6 @@ Respond with ONLY: SAFE, PROMPT_INJECTION, OUT_OF_SCOPE, or INAPPROPRIATE
         for pattern in instruction_patterns:
             sanitized = re.sub(pattern, "", sanitized, flags=re.IGNORECASE | re.DOTALL)
 
-        # Remove any accidentally included API keys or tokens
         sanitized = re.sub(
             r'(api[_-]?key|token|secret|password)["\']?\s*[:=]\s*["\']?[\w-]+',
             "[REDACTED]",
@@ -215,17 +202,14 @@ Respond with ONLY: SAFE, PROMPT_INJECTION, OUT_OF_SCOPE, or INAPPROPRIATE
             flags=re.IGNORECASE,
         )
 
-        # Remove any PII patterns that shouldn't be in responses
-        sanitized = re.sub(r"\b\d{3}-\d{2}-\d{4}\b", "[SSN REDACTED]", sanitized)  # SSN
+        sanitized = re.sub(r"\b\d{3}-\d{2}-\d{4}\b", "[SSN REDACTED]", sanitized)
 
-        # Clean up any multiple spaces or newlines created by removal
         sanitized = re.sub(r"\n\n+", "\n\n", sanitized)
         sanitized = re.sub(r"  +", " ", sanitized)
 
         return sanitized.strip()
 
 
-# Global validator instance
 security_validator = SecurityValidator()
 
 
@@ -240,22 +224,18 @@ async def input_validation_node(state: ConversationState) -> ConversationState:
     if not messages:
         return state
 
-    # Get the last message (most recent user input)
     last_message = messages[-1]
 
-    # Only validate human messages
     if not isinstance(last_message, HumanMessage):
         return state
 
-    # Build conversation context for personalized responses
     conversation_context = ""
-    for msg in messages[:-1]:  # All messages except the current one
+    for msg in messages[:-1]:
         if isinstance(msg, HumanMessage):
             conversation_context += f"User: {msg.content}\n"
         elif isinstance(msg, AIMessage):
             conversation_context += f"AI: {msg.content}\n"
 
-    # Validate the input with conversation context
     is_safe, threat_type, safe_response = await security_validator.validate_input(
         last_message.content, conversation_context
     )
@@ -263,16 +243,13 @@ async def input_validation_node(state: ConversationState) -> ConversationState:
     if not is_safe:
         logger.warning(f"Blocked {threat_type}: {last_message.content[:100]}...")
 
-        # Replace the user's message with a safe response
-        # Keep the original messages but add our security response
         return {
             **state,
             "messages": messages + [AIMessage(content=safe_response)],
-            "security_blocked": True,  # Flag to skip further processing
+            "security_blocked": True,
             "threat_type": threat_type,
         }
 
-    # Input is safe, continue processing
     return {**state, "security_blocked": False, "threat_type": None}
 
 
@@ -287,20 +264,16 @@ async def output_sanitization_node(state: ConversationState) -> ConversationStat
     if not messages:
         return state
 
-    # Get the last message
     last_message = messages[-1]
 
-    # Only sanitize AI messages
     if not isinstance(last_message, AIMessage):
         return state
 
-    # Sanitize the output
     sanitized_content = security_validator.sanitize_output(last_message.content)
 
     if sanitized_content != last_message.content:
         logger.info("Sanitized AI output to remove sensitive information")
 
-        # Create a new message list with the sanitized content
         sanitized_messages = messages[:-1] + [AIMessage(content=sanitized_content)]
 
         return {**state, "messages": sanitized_messages}
@@ -316,5 +289,5 @@ def should_continue_after_validation(state: ConversationState) -> str:
         "block" if security threat detected, "continue" otherwise
     """
     if state.get("security_blocked", False):
-        return "sanitize"  # Skip to output sanitization
-    return "supervisor"  # Continue to supervisor
+        return "sanitize"
+    return "supervisor"

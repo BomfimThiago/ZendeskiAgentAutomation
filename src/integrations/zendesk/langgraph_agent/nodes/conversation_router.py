@@ -25,28 +25,23 @@ async def supervisor_agent_node(state: ConversationState) -> ConversationState:
     """
     messages = state["messages"]
 
-    # Get the last human message
     last_human_message = None
     for msg in reversed(messages):
         if isinstance(msg, HumanMessage):
             last_human_message = msg
             break
 
-    # Use GPT-4 for better sales conversations
     supervisor_llm = ChatOpenAI(
         api_key=telecorp_config.OPENAI_API_KEY,
-        model="gpt-4",  # Better for sales conversations and lead capture
+        model="gpt-4",
         temperature=0.2,
         max_tokens=600,
     ).bind_tools(telecorp_tools)
 
     client_already_identified = state.get("is_existing_client") is not None
-
-    # Check if we need to route AWAY from sales (only for technical support or billing)
     needs_specialist_routing = False
 
     if last_human_message:
-        # Only check for routing AWAY from sales for specific technical or billing issues
         specialist_routing_prompt = f"""Analyze if this customer needs TECHNICAL SUPPORT or BILLING specialist (NOT sales).
 
 Customer message: "{last_human_message.content}"
@@ -79,7 +74,6 @@ Respond with ONLY: SUPPORT, BILLING, or SALES"""
             )
 
             intent = analysis.content.strip().upper()
-            # Only route away if it's clearly SUPPORT or BILLING
             needs_specialist_routing = intent in ["SUPPORT", "BILLING"]
             specialist_type = intent if needs_specialist_routing else None
         except Exception as e:
@@ -89,14 +83,11 @@ Respond with ONLY: SUPPORT, BILLING, or SALES"""
         needs_specialist_routing = False
         specialist_type = None
 
-    # If we need specialist routing, route away
     if needs_specialist_routing and specialist_type:
         route_to = "support" if specialist_type == "SUPPORT" else "billing"
         return {**state, "route_to": route_to, "current_persona": route_to}
 
-    # DEFAULT: Handle as sales-focused conversation with lead generation focus
     if not client_already_identified:
-        # Sales-focused prompt for unidentified customers
         sales_conversation_prompt = """You are Alex, TeleCorp's primary sales representative and lead generator.
 
 **CORE MISSION: EVERY CONVERSATION IS A SALES OPPORTUNITY**
@@ -144,7 +135,6 @@ Respond with ONLY: SUPPORT, BILLING, or SALES"""
 
 **KEY PRINCIPLE:** You're not just customer support - you're a sales professional. Every interaction should move toward lead generation or account growth."""
     else:
-        # Sales-focused prompt for identified customers
         sales_conversation_prompt = """You are Alex, TeleCorp's sales representative focused on account growth and customer satisfaction.
 
 **CUSTOMER IDENTIFIED - FOCUS ON ACCOUNT OPTIMIZATION:**
@@ -169,7 +159,6 @@ Your goal: Maximize customer satisfaction while identifying growth opportunities
             [SystemMessage(content=sales_conversation_prompt), *messages]
         )
 
-        # Handle tool calls if any (for client identification and sales activities)
         if response.tool_calls:
             tool_messages = []
             updated_state = state.copy()
@@ -178,15 +167,10 @@ Your goal: Maximize customer satisfaction while identifying growth opportunities
                 tool_name = tool_call["name"]
                 tool_args = tool_call["args"]
 
-                # Add sales context for ticket creation
                 if tool_name == "create_sales_ticket":
-                    # Ensure interest level is set for sales tickets
                     if "interest_level" not in tool_args:
-                        tool_args["interest_level"] = (
-                            "high"  # Default to high for proactive sales
-                        )
+                        tool_args["interest_level"] = "high"
 
-                # Find and execute the tool
                 tool_func = None
                 for tool in telecorp_tools:
                     if tool.name == tool_name:
@@ -204,7 +188,6 @@ Your goal: Maximize customer satisfaction while identifying growth opportunities
                             }
                         )
 
-                        # Update state based on tool results
                         if (
                             tool_name == "get_user_tickets"
                             and "customer_email" in tool_args
@@ -236,7 +219,6 @@ Your goal: Maximize customer satisfaction while identifying growth opportunities
                             }
                         )
 
-            # Get final response after tool execution
             if tool_messages:
                 final_response = await supervisor_llm.ainvoke(
                     [
@@ -255,12 +237,10 @@ Your goal: Maximize customer satisfaction while identifying growth opportunities
                     + [final_response],
                 }
 
-        # No tools used - direct sales response
         return {**state, "messages": messages + [response]}
 
     except Exception as e:
         print(f"Sales supervisor error: {e}")
-        # Fallback response with sales focus
         fallback_response = AIMessage(
             content="Hi! I'm Alex from TeleCorp, your dedicated sales representative. Welcome! To provide you with the best personalized service and find the perfect TeleCorp solution for you, I'd like to know: Are you an existing TeleCorp customer, or are you interested in learning about our services?"
         )

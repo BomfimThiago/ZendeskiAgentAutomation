@@ -18,20 +18,20 @@ class ConversationState(TypedDict):
 
     # Persona routing state
     conversation_type: str  # "general", "sales", "support", "billing"
-    current_persona: str    # "support", "sales", "billing"
-    route_to: Optional[str] # Target agent for routing
+    current_persona: str  # "support", "sales", "billing"
+    route_to: Optional[str]  # Target agent for routing
 
     # Client identification state
     is_existing_client: Optional[bool]  # Whether user is existing TeleCorp client
-    customer_email: Optional[str]       # Customer email for ticket lookup
-    customer_name: Optional[str]        # Customer name for personalization
+    customer_email: Optional[str]  # Customer email for ticket lookup
+    customer_name: Optional[str]  # Customer name for personalization
     existing_tickets: Optional[List[Dict[str, Any]]]  # Found tickets for client
 
     # Plan-and-Execute state
-    plan: Optional[List[str]]     # List of planned steps
-    current_step: Optional[int]   # Current step being executed
+    plan: Optional[List[str]]  # List of planned steps
+    current_step: Optional[int]  # Current step being executed
     step_results: Optional[Dict[int, str]]  # Results from each step execution
-    plan_complete: Optional[bool] # Whether the plan is fully executed
+    plan_complete: Optional[bool]  # Whether the plan is fully executed
 
     # Security fields
     security_blocked: Optional[bool]  # True if message was blocked

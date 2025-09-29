@@ -4,8 +4,12 @@ from typing import Dict, Any
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
-from src.integrations.zendesk.langgraph_agent.state.conversation_state import ConversationState
-from src.integrations.zendesk.langgraph_agent.config.langgraph_config import telecorp_config
+from src.integrations.zendesk.langgraph_agent.state.conversation_state import (
+    ConversationState,
+)
+from src.integrations.zendesk.langgraph_agent.config.langgraph_config import (
+    telecorp_config,
+)
 from src.integrations.zendesk.langgraph_agent.tools.telecorp_tools import telecorp_tools
 
 
@@ -17,12 +21,11 @@ async def support_agent_node(state: ConversationState) -> ConversationState:
     """
     messages = state["messages"]
 
-    # Create support agent with tools
     support_llm = ChatOpenAI(
         api_key=telecorp_config.OPENAI_API_KEY,
         model="gpt-4",
         temperature=0.1,
-        max_tokens=600
+        max_tokens=600,
     ).bind_tools(telecorp_tools)
 
     system_prompt = """You are Alex from TeleCorp customer support. You continue the conversation seamlessly - the user doesn't know they've been routed to a specialist.
@@ -55,14 +58,10 @@ async def support_agent_node(state: ConversationState) -> ConversationState:
 - Only create tickets after exhausting knowledge-based solutions"""
 
     try:
+        response = await support_llm.ainvoke(
+            [SystemMessage(content=system_prompt), *messages]
+        )
 
-        # Get response from support agent
-        response = await support_llm.ainvoke([
-            SystemMessage(content=system_prompt),
-            *messages
-        ])
-
-        # Handle tool calls if any
         if response.tool_calls:
             tool_messages = []
 
@@ -70,7 +69,6 @@ async def support_agent_node(state: ConversationState) -> ConversationState:
                 tool_name = tool_call["name"]
                 tool_args = tool_call["args"]
 
-                # Find and execute the tool
                 tool_func = None
                 for tool in telecorp_tools:
                     if tool.name == tool_name:
@@ -80,46 +78,46 @@ async def support_agent_node(state: ConversationState) -> ConversationState:
                 if tool_func:
                     try:
                         tool_result = await tool_func.ainvoke(tool_args)
-                        tool_messages.append({
-                            "role": "tool",
-                            "content": str(tool_result),
-                            "tool_call_id": tool_call["id"]
-                        })
+                        tool_messages.append(
+                            {
+                                "role": "tool",
+                                "content": str(tool_result),
+                                "tool_call_id": tool_call["id"],
+                            }
+                        )
                     except Exception as e:
-                        tool_messages.append({
-                            "role": "tool",
-                            "content": f"I encountered an issue with that request. Let me try a different approach or create a support ticket for you.",
-                            "tool_call_id": tool_call["id"]
-                        })
+                        tool_messages.append(
+                            {
+                                "role": "tool",
+                                "content": f"I encountered an issue with that request. Let me try a different approach or create a support ticket for you.",
+                                "tool_call_id": tool_call["id"],
+                            }
+                        )
 
-            # Get final response after tool execution
             if tool_messages:
-                final_response = await support_llm.ainvoke([
-                    SystemMessage(content=system_prompt),
-                    *messages,
-                    response,
-                    *tool_messages
-                ])
+                final_response = await support_llm.ainvoke(
+                    [
+                        SystemMessage(content=system_prompt),
+                        *messages,
+                        response,
+                        *tool_messages,
+                    ]
+                )
 
                 return {
                     **state,
-                    "messages": messages + [response] + tool_messages + [final_response]
+                    "messages": messages
+                    + [response]
+                    + tool_messages
+                    + [final_response],
                 }
 
-        # No tools used - direct response
-        return {
-            **state,
-            "messages": messages + [response]
-        }
+        return {**state, "messages": messages + [response]}
 
     except Exception as e:
         print(f"Support agent error: {e}")
-        # Fallback response
         error_response = AIMessage(
             content="I apologize for the technical difficulty. Please contact our support team at 1-800-TELECORP, and I'll make sure you get the help you need."
         )
 
-        return {
-            **state,
-            "messages": messages + [error_response]
-        }
+        return {**state, "messages": messages + [error_response]}

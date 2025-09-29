@@ -16,15 +16,14 @@ MODEL_ALTERNATIVES = {
             "16k context window",
             "5-10x cheaper than GPT-4",
             "Faster response times",
-            "Good for routing decisions and simple conversations"
+            "Good for routing decisions and simple conversations",
         ],
         "cons": [
             "Less capable at complex reasoning",
-            "May miss nuanced customer needs"
+            "May miss nuanced customer needs",
         ],
-        "use_for": ["routing", "simple_queries", "greetings"]
+        "use_for": ["routing", "simple_queries", "greetings"],
     },
-
     "gpt-3.5-turbo-1106": {
         "model": "gpt-3.5-turbo-1106",
         "temperature": 0.3,
@@ -33,14 +32,11 @@ MODEL_ALTERNATIVES = {
             "16k context window",
             "Better instruction following than base 3.5",
             "Good JSON mode support",
-            "5-10x cheaper than GPT-4"
+            "5-10x cheaper than GPT-4",
         ],
-        "cons": [
-            "Still less capable than GPT-4 for complex tasks"
-        ],
-        "use_for": ["routing", "tool_calls", "structured_outputs"]
+        "cons": ["Still less capable than GPT-4 for complex tasks"],
+        "use_for": ["routing", "tool_calls", "structured_outputs"],
     },
-
     "gpt-4o-mini": {
         "model": "gpt-4o-mini",
         "temperature": 0.3,
@@ -49,14 +45,11 @@ MODEL_ALTERNATIVES = {
             "128k context window",
             "Much cheaper than GPT-4 (about 60% less)",
             "Better quality than GPT-3.5",
-            "Good balance of cost and performance"
+            "Good balance of cost and performance",
         ],
-        "cons": [
-            "Not as capable as full GPT-4 for complex reasoning"
-        ],
-        "use_for": ["routing", "sales", "support", "general_conversation"]
+        "cons": ["Not as capable as full GPT-4 for complex reasoning"],
+        "use_for": ["routing", "sales", "support", "general_conversation"],
     },
-
     "claude-3-haiku": {
         "provider": "anthropic",
         "model": "claude-3-haiku-20240307",
@@ -66,15 +59,16 @@ MODEL_ALTERNATIVES = {
             "200k context window",
             "Very fast and cheap",
             "Good for simple tasks",
-            "Excellent instruction following"
+            "Excellent instruction following",
         ],
         "cons": [
             "Requires Anthropic API key",
-            "Less capable than Claude 3 Sonnet/Opus"
+            "Less capable than Claude 3 Sonnet/Opus",
         ],
-        "use_for": ["routing", "simple_support", "faq_responses"]
-    }
+        "use_for": ["routing", "simple_support", "faq_responses"],
+    },
 }
+
 
 def get_model_config_by_role(role: str) -> Dict[str, Any]:
     """
@@ -100,9 +94,9 @@ def get_model_config_by_role(role: str) -> Dict[str, Any]:
 # Hybrid approach: Use cheaper models for simple tasks, GPT-4 for complex ones
 HYBRID_CONFIG = {
     "routing_model": "gpt-3.5-turbo-1106",  # For routing decisions
-    "conversation_model": "gpt-4o-mini",     # For customer conversations
-    "complex_model": "gpt-4",                # For complex issues only
-    "max_tokens_routing": 200,               # Minimal tokens for routing
-    "max_tokens_conversation": 500,          # Moderate for conversations
-    "max_tokens_complex": 1000,              # More for complex tasks
+    "conversation_model": "gpt-4o-mini",  # For customer conversations
+    "complex_model": "gpt-4",  # For complex issues only
+    "max_tokens_routing": 200,  # Minimal tokens for routing
+    "max_tokens_conversation": 500,  # Moderate for conversations
+    "max_tokens_complex": 1000,  # More for complex tasks
 }

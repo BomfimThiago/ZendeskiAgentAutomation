@@ -13,38 +13,43 @@ logging.getLogger("langsmith").setLevel(logging.ERROR)
 logging.getLogger("langsmith.client").setLevel(logging.ERROR)
 warnings.filterwarnings("ignore", category=UserWarning, module="langsmith")
 
-from src.integrations.zendesk.langgraph_agent.state.conversation_state import ConversationState
-from src.integrations.zendesk.langgraph_agent.nodes.conversation_router import supervisor_agent_node
-from src.integrations.zendesk.langgraph_agent.nodes.support_agent import support_agent_node
+from src.integrations.zendesk.langgraph_agent.state.conversation_state import (
+    ConversationState,
+)
+from src.integrations.zendesk.langgraph_agent.nodes.conversation_router import (
+    supervisor_agent_node,
+)
+from src.integrations.zendesk.langgraph_agent.nodes.support_agent import (
+    support_agent_node,
+)
 from src.integrations.zendesk.langgraph_agent.nodes.sales_agent import sales_agent_node
-from src.integrations.zendesk.langgraph_agent.nodes.billing_agent import billing_agent_node
+from src.integrations.zendesk.langgraph_agent.nodes.billing_agent import (
+    billing_agent_node,
+)
 from src.integrations.zendesk.langgraph_agent.nodes.guardrail_node import (
     input_validation_node,
     output_sanitization_node,
-    should_continue_after_validation
+    should_continue_after_validation,
 )
-from src.integrations.zendesk.langgraph_agent.config.langgraph_config import telecorp_config
+from src.integrations.zendesk.langgraph_agent.config.langgraph_config import (
+    telecorp_config,
+)
 from src.core.config import settings, setup_langsmith
 
-# Set up LangSmith environment variables
 setup_langsmith()
 
-# Create LangSmith client using core settings (support both old and new variable names)
 langsmith_client = None
 
-# Check for API key from either source
 api_key = settings.LANGCHAIN_API_KEY or settings.LANGSMITH_API_KEY
 tracing_enabled = settings.LANGCHAIN_TRACING_V2 or settings.LANGSMITH_TRACING
 
 if api_key and tracing_enabled:
-    endpoint = settings.LANGCHAIN_ENDPOINT or settings.LANGSMITH_ENDPOINT or "https://api.smith.langchain.com"
-    langsmith_client = Client(
-        api_key=api_key,
-        api_url=endpoint
+    endpoint = (
+        settings.LANGCHAIN_ENDPOINT
+        or settings.LANGSMITH_ENDPOINT
+        or "https://api.smith.langchain.com"
     )
-
-
-
+    langsmith_client = Client(api_key=api_key, api_url=endpoint)
 
 
 def should_continue_after_supervisor(state: ConversationState) -> str:
@@ -58,7 +63,6 @@ def should_continue_after_supervisor(state: ConversationState) -> str:
     elif route_to == "billing":
         return "billing_agent"
     else:
-        # No routing needed - supervisor handled the conversation
         return END
 
 
@@ -76,7 +80,6 @@ def create_telecorp_graph():
 
     graph = StateGraph(ConversationState)
 
-    # Add all nodes including security nodes
     graph.add_node("input_validation", input_validation_node)
     graph.add_node("supervisor", supervisor_agent_node)
     graph.add_node("support_agent", support_agent_node)
@@ -84,20 +87,14 @@ def create_telecorp_graph():
     graph.add_node("billing_agent", billing_agent_node)
     graph.add_node("output_sanitization", output_sanitization_node)
 
-    # Set input validation as entry point - ALL messages go through security first
     graph.set_entry_point("input_validation")
 
-    # Input validation routes to supervisor or output sanitization if blocked
     graph.add_conditional_edges(
         "input_validation",
         should_continue_after_validation,
-        {
-            "supervisor": "supervisor",
-            "sanitize": "output_sanitization"
-        }
+        {"supervisor": "supervisor", "sanitize": "output_sanitization"},
     )
 
-    # Supervisor routes to appropriate agent based on customer needs
     graph.add_conditional_edges(
         "supervisor",
         should_continue_after_supervisor,
@@ -105,24 +102,20 @@ def create_telecorp_graph():
             "support_agent": "support_agent",
             "sales_agent": "sales_agent",
             "billing_agent": "billing_agent",
-            END: "output_sanitization"  # Always sanitize before ending
-        }
+            END: "output_sanitization",
+        },
     )
 
-    # All agents go through output sanitization before ending
     graph.add_edge("support_agent", "output_sanitization")
     graph.add_edge("sales_agent", "output_sanitization")
     graph.add_edge("billing_agent", "output_sanitization")
-
-    # Output sanitization is the final node before END
     graph.add_edge("output_sanitization", END)
 
-    # Compile with checkpointer for state persistence
     checkpointer = MemorySaver()
     compiled_graph = graph.compile(checkpointer=checkpointer)
 
-    # Wrap graph execution with LangSmith tracing if configured
     if langsmith_client and tracing_enabled:
+
         class TracedGraph:
             def __init__(self, graph, client, project):
                 self.graph = graph
@@ -133,7 +126,7 @@ def create_telecorp_graph():
                 with tracing_context(
                     enabled=True,
                     project_name=self.project,
-                    langsmith_extra={"client": self.client}
+                    langsmith_extra={"client": self.client},
                 ):
                     return await self.graph.ainvoke(input_data, config)
 
@@ -141,11 +134,15 @@ def create_telecorp_graph():
                 with tracing_context(
                     enabled=True,
                     project_name=self.project,
-                    langsmith_extra={"client": self.client}
+                    langsmith_extra={"client": self.client},
                 ):
                     return self.graph.invoke(input_data, config)
 
-        project_name = settings.LANGCHAIN_PROJECT or settings.LANGSMITH_PROJECT or "telecorp-agent-automation"
+        project_name = (
+            settings.LANGCHAIN_PROJECT
+            or settings.LANGSMITH_PROJECT
+            or "telecorp-agent-automation"
+        )
         return TracedGraph(compiled_graph, langsmith_client, project_name)
 
     return compiled_graph

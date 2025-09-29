@@ -9,6 +9,7 @@ from enum import Enum
 
 class ThreatLevel(Enum):
     """Security threat classification levels."""
+
     SAFE = "safe"
     SUSPICIOUS = "suspicious"
     BLOCKED = "blocked"
@@ -16,6 +17,7 @@ class ThreatLevel(Enum):
 
 class ViolationType(Enum):
     """Types of security violations."""
+
     SCOPE_VIOLATION = "scope_violation"
     PROMPT_INJECTION = "prompt_injection"
     JAILBREAK_ATTEMPT = "jailbreak_attempt"

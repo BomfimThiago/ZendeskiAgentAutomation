@@ -63,7 +63,6 @@ class TeleCorpConfig:
     # Error handling
     MAX_RETRIES: int = 3
 
-
     # Error Messages
     @property
     def TECHNICAL_DIFFICULTIES_MESSAGE(self) -> str:
