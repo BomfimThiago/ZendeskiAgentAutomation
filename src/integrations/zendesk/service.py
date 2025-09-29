@@ -156,3 +156,87 @@ class TicketService:
                 operation="fetching ticket by ID",
                 context={"ticket_id": ticket_id}
             )
+
+    async def create_ticket(
+        self,
+        subject: str,
+        description: str,
+        requester_email: str = None,
+        requester_name: str = None,
+        ticket_type: str = "question",
+        priority: str = "normal",
+        tags: List[str] = None
+    ) -> ZendeskTicket:
+        """
+        Create a new ticket in Zendesk.
+
+        Args:
+            subject: Ticket subject line
+            description: Ticket description/body
+            requester_email: Email of the person requesting support
+            requester_name: Name of the person requesting support
+            ticket_type: Type of ticket (problem, incident, question, task)
+            priority: Priority level (low, normal, high, urgent)
+            tags: List of tags for the ticket
+
+        Returns:
+            ZendeskTicket model of the created ticket
+
+        Raises:
+            HTTPException: For various API errors
+        """
+        try:
+            log_with_context(
+                logger,
+                20,  # INFO
+                "Creating new ticket",
+                subject=subject,
+                type=ticket_type,
+                priority=priority,
+                has_requester=bool(requester_email or requester_name)
+            )
+
+            ticket = await self.client.create_ticket(
+                subject=subject,
+                description=description,
+                requester_email=requester_email,
+                requester_name=requester_name,
+                ticket_type=ticket_type,
+                priority=priority,
+                tags=tags
+            )
+
+            log_with_context(
+                logger,
+                20,  # INFO
+                "Successfully created ticket",
+                ticket_id=ticket.id,
+                subject=ticket.subject,
+                status=ticket.status
+            )
+
+            return ticket
+
+        except ZendeskAPIError as e:
+            handle_zendesk_api_error(
+                error=e,
+                operation="creating ticket",
+                context={
+                    "subject": subject,
+                    "type": ticket_type,
+                    "priority": priority,
+                    "has_requester": bool(requester_email or requester_name)
+                }
+            )
+
+        except Exception as e:
+            handle_unexpected_error(
+                error=e,
+                operation="creating ticket",
+                context={
+                    "subject": subject,
+                    "type": ticket_type,
+                    "priority": priority,
+                    "has_requester": bool(requester_email or requester_name)
+                }
+            )

@@ -201,10 +201,130 @@ def get_plan_comparison(plan_type: str = "internet") -> str:
         return f"Error getting plan comparison for {plan_type}: {str(e)}"
 
 
+@tool
+def get_internet_speed_guide() -> str:
+    """
+    Get comprehensive internet speed troubleshooting guide.
+
+    Use this tool when customers have:
+    - Slow internet speeds
+    - Speed test issues
+    - Connection quality problems
+    - Performance complaints
+
+    Returns:
+        Complete guide for internet speed testing and troubleshooting.
+    """
+    try:
+        knowledge_base_path = Path("telecorpBaseKnowledge")
+        speed_guide_file = knowledge_base_path / "How to Check Your Internet Speed - Complete Guide.pdf"
+
+        if speed_guide_file.exists():
+            with open(speed_guide_file, 'rb') as file:
+                pdf_reader = pypdf.PdfReader(file)
+                speed_guide_content = ""
+                for page in pdf_reader.pages:
+                    speed_guide_content += page.extract_text() + "\n"
+
+            return f"""Internet Speed Troubleshooting Guide:
+
+{speed_guide_content}
+
+IMPORTANT for Technical Support:
+- Walk customer through speed testing steps
+- Ask "Have you tried checking your speed at speedtest.net?"
+- Ask "Are you connected via WiFi or ethernet cable?"
+- Ask "How many devices are currently using the internet?"
+- Provide step-by-step guidance from this guide
+- After troubleshooting, create support ticket if issue persists"""
+
+        else:
+            return "Internet speed guide not available. Please contact technical support at 1-800-TECH-TEL for speed troubleshooting assistance."
+
+    except Exception as e:
+        return f"Error accessing internet speed guide: {str(e)}. Please contact technical support at 1-800-TECH-TEL."
+
+
+@tool
+def get_router_configuration_guide() -> str:
+    """
+    Get comprehensive router configuration and troubleshooting guide.
+
+    Use this tool when customers have:
+    - WiFi connection problems
+    - Router setup issues
+    - Network configuration problems
+    - WiFi password issues
+
+    Returns:
+        Complete guide for router configuration and troubleshooting.
+    """
+    try:
+        knowledge_base_path = Path("telecorpBaseKnowledge")
+        router_guide_file = knowledge_base_path / "How to Configure Your Router - Complete Guide.pdf"
+
+        if router_guide_file.exists():
+            with open(router_guide_file, 'rb') as file:
+                pdf_reader = pypdf.PdfReader(file)
+                router_guide_content = ""
+                for page in pdf_reader.pages:
+                    router_guide_content += page.extract_text() + "\n"
+
+            return f"""Router Configuration Troubleshooting Guide:
+
+{router_guide_content}
+
+IMPORTANT for Technical Support:
+- Ask "What type of router do you have?"
+- Ask "Can you see any lights on your router? What colors?"
+- Ask "Have you tried unplugging the router for 30 seconds?"
+- Ask "Are you able to connect other devices to WiFi?"
+- Walk through router reset steps if needed
+- Provide step-by-step configuration guidance
+- After troubleshooting, create support ticket if issue persists"""
+
+        else:
+            return "Router configuration guide not available. Please contact technical support at 1-800-TECH-TEL for router assistance."
+
+    except Exception as e:
+        return f"Error accessing router configuration guide: {str(e)}. Please contact technical support at 1-800-TECH-TEL."
+
+
+@tool
+def get_technical_troubleshooting_steps(issue_type: str) -> str:
+    """
+    Get specific troubleshooting steps based on the type of technical issue.
+
+    Args:
+        issue_type: Type of issue - "speed", "connection", "router", "general"
+
+    Returns:
+        Specific troubleshooting steps for the issue type.
+    """
+    try:
+        issue_type_lower = issue_type.lower()
+
+        if "speed" in issue_type_lower:
+            return get_internet_speed_guide()
+        elif any(term in issue_type_lower for term in ["router", "wifi", "connection"]):
+            return get_router_configuration_guide()
+        else:
+            # Get general FAQ for other issues
+            return get_telecorp_faq()
+
+    except Exception as e:
+        return f"Error getting troubleshooting steps: {str(e)}. Please contact technical support at 1-800-TECH-TEL."
+
+
+from .zendesk_tools import zendesk_tools_clean
+
 telecorp_tools = [
     get_telecorp_plans_pricing,
     get_telecorp_company_info,
     get_telecorp_faq,
     search_telecorp_knowledge,
-    get_plan_comparison
-]
+    get_plan_comparison,
+    get_internet_speed_guide,
+    get_router_configuration_guide,
+    get_technical_troubleshooting_steps
+] + zendesk_tools_clean

@@ -63,11 +63,6 @@ class TeleCorpConfig:
     # Error handling
     MAX_RETRIES: int = 3
 
-    # LangSmith Configuration
-    LANGCHAIN_TRACING_V2: str = os.getenv("LANGCHAIN_TRACING_V2", "true")
-    LANGCHAIN_API_KEY: str = os.getenv("LANGCHAIN_API_KEY", "")
-    LANGCHAIN_PROJECT: str = os.getenv("LANGCHAIN_PROJECT", "TeleCorp-Customer-Support")
-    LANGSMITH_ENDPOINT: str = os.getenv("LANGSMITH_ENDPOINT", "https://api.smith.langchain.com")
 
     # Error Messages
     @property

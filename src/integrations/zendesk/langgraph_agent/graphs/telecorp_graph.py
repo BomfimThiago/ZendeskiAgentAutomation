@@ -1,141 +1,120 @@
-"""Simplified TeleCorp customer support LangGraph workflow."""
+"""TeleCorp supervisor-based LangGraph workflow with plan-and-execute pattern."""
 
-import os
-from langgraph.graph import StateGraph, END
-from langgraph.prebuilt import ToolNode
+import logging
+import warnings
+from langgraph.graph import StateGraph, END, START
+from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages import HumanMessage, AIMessage
+from langsmith import Client
+from langsmith.run_helpers import tracing_context
+
+# Suppress LangSmith warnings and errors from appearing in frontend
+logging.getLogger("langsmith").setLevel(logging.ERROR)
+logging.getLogger("langsmith.client").setLevel(logging.ERROR)
+warnings.filterwarnings("ignore", category=UserWarning, module="langsmith")
 
 from src.integrations.zendesk.langgraph_agent.state.conversation_state import ConversationState
-from src.integrations.zendesk.langgraph_agent.nodes.guardrail_node import guardrail_node
-from src.integrations.zendesk.langgraph_agent.nodes.conversation_router import conversation_router_node
-from src.integrations.zendesk.langgraph_agent.nodes.general_agent import general_agent_node
+from src.integrations.zendesk.langgraph_agent.nodes.conversation_router import supervisor_agent_node
+from src.integrations.zendesk.langgraph_agent.nodes.support_agent import support_agent_node
 from src.integrations.zendesk.langgraph_agent.nodes.sales_agent import sales_agent_node
-from src.integrations.zendesk.langgraph_agent.tools.telecorp_tools import telecorp_tools
+from src.integrations.zendesk.langgraph_agent.nodes.billing_agent import billing_agent_node
 from src.integrations.zendesk.langgraph_agent.config.langgraph_config import telecorp_config
+from src.core.config import settings
 
-# Set up LangSmith tracing
-os.environ.setdefault("LANGCHAIN_TRACING_V2", telecorp_config.LANGCHAIN_TRACING_V2)
-if telecorp_config.LANGCHAIN_API_KEY:
-    os.environ.setdefault("LANGCHAIN_API_KEY", telecorp_config.LANGCHAIN_API_KEY)
-os.environ.setdefault("LANGCHAIN_PROJECT", telecorp_config.LANGCHAIN_PROJECT)
-os.environ.setdefault("LANGSMITH_ENDPOINT", telecorp_config.LANGSMITH_ENDPOINT)
-
-
-def should_continue_after_guardrail(state: ConversationState) -> str:
-    """Check if guardrail blocked the request."""
-    messages = state["messages"]
-    if not messages:
-        return "router"
-
-    last_message = messages[-1]
-
-    # If the last message is from AI and contains safety language, we're done
-    if (isinstance(last_message, AIMessage) and
-        "maintain consistent professional standards" in last_message.content):
-        return END
-
-    return "router"
+# Create LangSmith client using core settings
+langsmith_client = None
+if settings.LANGSMITH_API_KEY and settings.LANGSMITH_TRACING:
+    langsmith_client = Client(
+        api_key=settings.LANGSMITH_API_KEY,
+        api_url=settings.LANGSMITH_ENDPOINT or "https://api.smith.langchain.com"
+    )
 
 
-def should_continue_after_router(state: ConversationState) -> str:
-    """Route to appropriate agent based on conversation type."""
-    conversation_type = state.get("conversation_type", "general")
 
-    if conversation_type == "sales":
+
+
+def should_continue_after_supervisor(state: ConversationState) -> str:
+    """Route from supervisor to appropriate agent or end conversation."""
+    route_to = state.get("route_to")
+
+    if route_to == "support":
+        return "support_agent"
+    elif route_to == "sales":
         return "sales_agent"
+    elif route_to == "billing":
+        return "billing_agent"
     else:
-        return "general_agent"
-
-
-def should_continue_after_agent(state: ConversationState) -> str:
-    """Check if agent wants to use tools."""
-    messages = state["messages"]
-    last_message = messages[-1]
-
-    # If the last message has tool calls, execute them
-    if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
-        return "tools"
-
-    # Otherwise we're done
-    return END
+        # No routing needed - supervisor handled the conversation
+        return END
 
 
 def create_telecorp_graph():
     """
-    Create a simple, clean TeleCorp customer support workflow.
+    Create TeleCorp customer support workflow with supervisor routing pattern.
 
     Following LangGraph best practices:
-    1. Simple flow with tool integration
-    2. Message-based state management
-    3. Clear, focused responsibilities for each node
+    1. Supervisor analyzes customer needs and routes to appropriate agent
+    2. Each agent specializes in their domain (support, sales, billing)
+    3. Plan-and-execute pattern handled by individual agents
+    4. Message-based state management with session persistence
     """
 
     graph = StateGraph(ConversationState)
 
     # Add all nodes
-    graph.add_node("guardrail", guardrail_node)
-    graph.add_node("router", conversation_router_node)
-    graph.add_node("general_agent", general_agent_node)
+    graph.add_node("supervisor", supervisor_agent_node)
+    graph.add_node("support_agent", support_agent_node)
     graph.add_node("sales_agent", sales_agent_node)
-    graph.add_node("tools", ToolNode(telecorp_tools))
+    graph.add_node("billing_agent", billing_agent_node)
 
-    # Set entry point
-    graph.set_entry_point("guardrail")
+    # Set supervisor as entry point - Alex greets and routes customers
+    graph.set_entry_point("supervisor")
 
-    # Add conditional routing
+    # Supervisor routes to appropriate agent based on customer needs
     graph.add_conditional_edges(
-        "guardrail",
-        should_continue_after_guardrail,
+        "supervisor",
+        should_continue_after_supervisor,
         {
-            "router": "router",
+            "support_agent": "support_agent",
+            "sales_agent": "sales_agent",
+            "billing_agent": "billing_agent",
             END: END
         }
     )
 
-    graph.add_conditional_edges(
-        "router",
-        should_continue_after_router,
-        {
-            "general_agent": "general_agent",
-            "sales_agent": "sales_agent"
-        }
-    )
+    # All agents return to END after handling the customer
+    graph.add_edge("support_agent", END)
+    graph.add_edge("sales_agent", END)
+    graph.add_edge("billing_agent", END)
 
-    # Both agents can use tools
-    graph.add_conditional_edges(
-        "general_agent",
-        should_continue_after_agent,
-        {
-            "tools": "tools",
-            END: END
-        }
-    )
+    # Compile with checkpointer for state persistence
+    checkpointer = MemorySaver()
+    compiled_graph = graph.compile(checkpointer=checkpointer)
 
-    graph.add_conditional_edges(
-        "sales_agent",
-        should_continue_after_agent,
-        {
-            "tools": "tools",
-            END: END
-        }
-    )
+    # Wrap graph execution with LangSmith tracing if configured
+    if langsmith_client and settings.LANGSMITH_TRACING:
+        class TracedGraph:
+            def __init__(self, graph, client, project):
+                self.graph = graph
+                self.client = client
+                self.project = project
 
-    # After tools, route back based on current persona
-    def route_after_tools(state: ConversationState) -> str:
-        current_persona = state.get("current_persona", "general_alex")
-        if current_persona == "sales_alex":
-            return "sales_agent"
-        else:
-            return "general_agent"
+            async def ainvoke(self, input_data, config=None):
+                with tracing_context(
+                    enabled=True,
+                    project_name=self.project,
+                    langsmith_extra={"client": self.client}
+                ):
+                    return await self.graph.ainvoke(input_data, config)
 
-    graph.add_conditional_edges(
-        "tools",
-        route_after_tools,
-        {
-            "general_agent": "general_agent",
-            "sales_agent": "sales_agent"
-        }
-    )
+            def invoke(self, input_data, config=None):
+                with tracing_context(
+                    enabled=True,
+                    project_name=self.project,
+                    langsmith_extra={"client": self.client}
+                ):
+                    return self.graph.invoke(input_data, config)
 
-    # Compile and return
-    return graph.compile()
+        return TracedGraph(compiled_graph, langsmith_client, settings.LANGSMITH_PROJECT)
+
+    return compiled_graph

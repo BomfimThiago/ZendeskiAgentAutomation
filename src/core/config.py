@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     # OpenAI Configuration
     OPENAI_API_KEY: str = ""
-    LANGCHAIN_API_KEY: str = ""
+    LANGSMITH_API_KEY: str = ""
     LANGSMITH_TRACING: bool = False
     LANGSMITH_ENDPOINT: str = ""
     LANGSMITH_PROJECT: str = ""

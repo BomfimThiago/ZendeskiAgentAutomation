@@ -266,6 +266,84 @@ class ZendeskClient:
 
         return all_tickets
 
+    async def create_ticket(
+        self,
+        subject: str,
+        description: str,
+        requester_email: str = None,
+        requester_name: str = None,
+        ticket_type: str = "question",
+        priority: str = "normal",
+        tags: List[str] = None
+    ) -> ZendeskTicket:
+        """
+        Create a new ticket in Zendesk.
+
+        Args:
+            subject: Ticket subject line
+            description: Ticket description/body
+            requester_email: Email of the person requesting support
+            requester_name: Name of the person requesting support
+            ticket_type: Type of ticket (problem, incident, question, task)
+            priority: Priority level (low, normal, high, urgent)
+            tags: List of tags for the ticket
+
+        Returns:
+            ZendeskTicket model of the created ticket
+
+        Raises:
+            ZendeskAPIError: If ticket creation fails
+        """
+        # Build ticket data
+        ticket_data = {
+            "subject": subject,
+            "comment": {
+                "body": description
+            },
+            "type": ticket_type,
+            "priority": priority
+        }
+
+        # Add requester information if provided
+        if requester_email or requester_name:
+            requester_data = {}
+            if requester_email:
+                requester_data["email"] = requester_email
+            if requester_name:
+                requester_data["name"] = requester_name
+            ticket_data["requester"] = requester_data
+
+        # Add tags if provided
+        if tags:
+            ticket_data["tags"] = tags
+
+        # Make the API request
+        request_payload = {"ticket": ticket_data}
+
+        log_with_context(
+            logger,
+            20,  # INFO
+            "Creating new ticket",
+            subject=subject,
+            type=ticket_type,
+            priority=priority,
+            has_requester=bool(requester_email or requester_name)
+        )
+
+        response_data = await self._make_request("POST", "tickets.json", data=request_payload)
+        created_ticket = ZendeskTicket(**response_data["ticket"])
+
+        log_with_context(
+            logger,
+            20,  # INFO
+            "Successfully created ticket",
+            ticket_id=created_ticket.id,
+            subject=created_ticket.subject,
+            status=created_ticket.status
+        )
+
+        return created_ticket
+
 
 
 async def get_zendesk_client() -> ZendeskClient:
