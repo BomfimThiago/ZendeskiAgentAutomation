@@ -240,3 +240,50 @@ class TicketService:
                     "has_requester": bool(requester_email or requester_name)
                 }
             )
+
+    async def search_tickets_by_email(self, customer_email: str) -> List[ZendeskTicket]:
+        """
+        Search for tickets by customer email address.
+
+        Args:
+            customer_email: Customer's email address to search for
+
+        Returns:
+            List of ZendeskTicket models matching the email
+
+        Raises:
+            HTTPException: For various API errors
+        """
+        try:
+            log_with_context(
+                logger,
+                20,  # INFO
+                "Searching tickets by email",
+                email=customer_email
+            )
+
+            tickets = await self.client.search_tickets_by_email(customer_email)
+
+            log_with_context(
+                logger,
+                20,  # INFO
+                "Successfully found tickets by email",
+                email=customer_email,
+                ticket_count=len(tickets)
+            )
+
+            return tickets
+
+        except ZendeskAPIError as e:
+            handle_zendesk_api_error(
+                error=e,
+                operation="searching tickets by email",
+                context={"email": customer_email}
+            )
+
+        except Exception as e:
+            handle_unexpected_error(
+                error=e,
+                operation="searching tickets by email",
+                context={"email": customer_email}
+            )

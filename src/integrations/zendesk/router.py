@@ -12,7 +12,8 @@ from .schemas import (
     TicketsListResponse,
     TicketDetailResponse,
     TicketQueryParams,
-    ErrorResponse
+    ErrorResponse,
+    TicketResponse
 )
 
 router = APIRouter(tags=["Zendesk Tickets"])
@@ -121,3 +122,63 @@ async def get_ticket_by_id(
     ensuring the ticket exists before processing the request.
     """
     return TicketDetailResponse(ticket=ticket)
+
+
+@router.get(
+    "/tickets/search/by-email",
+    response_model=TicketsListResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Search tickets by email",
+    description="Search for tickets by customer email address using Zendesk Search API",
+    responses={
+        status.HTTP_200_OK: {
+            "model": TicketsListResponse,
+            "description": "Successfully found tickets for the email"
+        },
+        status.HTTP_400_BAD_REQUEST: {
+            "model": ErrorResponse,
+            "description": "Missing or invalid email parameter"
+        },
+        status.HTTP_401_UNAUTHORIZED: {
+            "model": ErrorResponse,
+            "description": "Authentication failed"
+        },
+        status.HTTP_503_SERVICE_UNAVAILABLE: {
+            "model": ErrorResponse,
+            "description": "Zendesk service unavailable"
+        }
+    }
+)
+async def search_tickets_by_email(
+    ticket_service: TicketServiceDep,
+    email: Annotated[str, Query(
+        description="Customer email address to search for tickets",
+        example="customer@example.com"
+    )]
+) -> TicketsListResponse:
+    """
+    Search for tickets by customer email address.
+
+    This endpoint uses Zendesk's Search API to efficiently find all tickets
+    associated with a specific customer email address.
+
+    Example usage:
+    - `GET /tickets/search/by-email?email=customer@example.com`
+    """
+    tickets = await ticket_service.search_tickets_by_email(email)
+
+    # Convert to TicketResponse format
+    ticket_responses = [
+        TicketResponse(**ticket.model_dump())
+        for ticket in tickets
+    ]
+
+    return TicketsListResponse(
+        tickets=ticket_responses,
+        count=len(ticket_responses),
+        meta={
+            "has_more": False,
+            "after_cursor": None,
+            "before_cursor": None
+        }
+    )

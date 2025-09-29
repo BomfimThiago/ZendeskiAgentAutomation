@@ -344,6 +344,73 @@ class ZendeskClient:
 
         return created_ticket
 
+    async def search_tickets_by_email(self, customer_email: str) -> List[ZendeskTicket]:
+        """
+        Search for tickets by customer email using Zendesk Search API.
+
+        Args:
+            customer_email: Customer's email address to search for
+
+        Returns:
+            List of ZendeskTicket models matching the email
+
+        Raises:
+            ZendeskAPIError: If search fails
+        """
+        try:
+            # Use Zendesk Search API to find tickets by requester email
+            search_query = f"type:ticket requester:{customer_email}"
+            params = {
+                "query": search_query,
+                "sort_by": "updated_at",
+                "sort_order": "desc"
+            }
+
+            log_with_context(
+                logger,
+                20,  # INFO
+                "Searching tickets by email",
+                email=customer_email
+            )
+
+            response_data = await self._make_request("GET", "search.json", params=params)
+
+            # Parse tickets from search results
+            tickets = []
+            for result in response_data.get("results", []):
+                if result.get("result_type") == "ticket":
+                    tickets.append(ZendeskTicket(**result))
+
+            log_with_context(
+                logger,
+                20,  # INFO
+                "Successfully found tickets by email",
+                email=customer_email,
+                ticket_count=len(tickets)
+            )
+
+            return tickets
+
+        except ZendeskAPIError as e:
+            log_with_context(
+                logger,
+                40,  # ERROR
+                "Failed to search tickets by email",
+                email=customer_email,
+                error=str(e)
+            )
+            raise
+
+        except Exception as e:
+            log_with_context(
+                logger,
+                40,  # ERROR
+                "Unexpected error searching tickets by email",
+                email=customer_email,
+                error=str(e)
+            )
+            raise ZendeskAPIError(f"Unexpected error searching tickets: {str(e)}")
+
 
 
 async def get_zendesk_client() -> ZendeskClient:

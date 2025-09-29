@@ -19,14 +19,23 @@ from src.integrations.zendesk.langgraph_agent.nodes.support_agent import support
 from src.integrations.zendesk.langgraph_agent.nodes.sales_agent import sales_agent_node
 from src.integrations.zendesk.langgraph_agent.nodes.billing_agent import billing_agent_node
 from src.integrations.zendesk.langgraph_agent.config.langgraph_config import telecorp_config
-from src.core.config import settings
+from src.core.config import settings, setup_langsmith
 
-# Create LangSmith client using core settings
+# Set up LangSmith environment variables
+setup_langsmith()
+
+# Create LangSmith client using core settings (support both old and new variable names)
 langsmith_client = None
-if settings.LANGSMITH_API_KEY and settings.LANGSMITH_TRACING:
+
+# Check for API key from either source
+api_key = settings.LANGCHAIN_API_KEY or settings.LANGSMITH_API_KEY
+tracing_enabled = settings.LANGCHAIN_TRACING_V2 or settings.LANGSMITH_TRACING
+
+if api_key and tracing_enabled:
+    endpoint = settings.LANGCHAIN_ENDPOINT or settings.LANGSMITH_ENDPOINT or "https://api.smith.langchain.com"
     langsmith_client = Client(
-        api_key=settings.LANGSMITH_API_KEY,
-        api_url=settings.LANGSMITH_ENDPOINT or "https://api.smith.langchain.com"
+        api_key=api_key,
+        api_url=endpoint
     )
 
 
@@ -92,7 +101,7 @@ def create_telecorp_graph():
     compiled_graph = graph.compile(checkpointer=checkpointer)
 
     # Wrap graph execution with LangSmith tracing if configured
-    if langsmith_client and settings.LANGSMITH_TRACING:
+    if langsmith_client and tracing_enabled:
         class TracedGraph:
             def __init__(self, graph, client, project):
                 self.graph = graph
@@ -115,6 +124,7 @@ def create_telecorp_graph():
                 ):
                     return self.graph.invoke(input_data, config)
 
-        return TracedGraph(compiled_graph, langsmith_client, settings.LANGSMITH_PROJECT)
+        project_name = settings.LANGCHAIN_PROJECT or settings.LANGSMITH_PROJECT or "telecorp-agent-automation"
+        return TracedGraph(compiled_graph, langsmith_client, project_name)
 
     return compiled_graph

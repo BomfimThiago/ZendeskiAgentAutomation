@@ -191,5 +191,140 @@ Could you please provide your email? Once I have that, I'll create a high-priori
         return template_manager.get_error_response("sales_error")
 
 
+@tool
+async def get_user_tickets(customer_email: str) -> str:
+    """
+    Get existing Zendesk tickets for a customer by email address.
+
+    Use this tool to check if a TeleCorp customer has existing support tickets
+    that they might want to discuss or follow up on.
+
+    Args:
+        customer_email: Customer's email address to search for tickets
+
+    Returns:
+        Formatted list of customer tickets with IDs, subjects, and status,
+        or message if no tickets found
+    """
+    try:
+        if not customer_email:
+            return "I'll need your email address to look up your tickets. Could you please provide your email?"
+
+        # Use existing Zendesk service to search for tickets by email
+        async with await get_zendesk_client() as zendesk_client:
+            ticket_service = TicketService(zendesk_client)
+
+            # Use efficient search method instead of filtering all tickets
+            tickets = await ticket_service.search_tickets_by_email(customer_email)
+
+        if not tickets:
+            return f"I didn't find any existing tickets for {customer_email}. You appear to be a new customer or haven't contacted support before. How can I help you today?"
+
+        # Format tickets for presentation
+        ticket_list = []
+        for i, ticket in enumerate(tickets[:5], 1):  # Show max 5 recent tickets
+            status_emoji = {
+                'new': '🆕',
+                'open': '📂',
+                'pending': '⏳',
+                'hold': '⏸️',
+                'solved': '✅',
+                'closed': '📁'
+            }.get(ticket.status, '📄')
+
+            ticket_list.append(
+                f"{i}. {status_emoji} Ticket #{ticket.id}: {ticket.subject} ({ticket.status.upper()})"
+            )
+
+        if len(tickets) > 5:
+            ticket_list.append(f"... and {len(tickets) - 5} more tickets")
+
+        response = f"""Great! I found your account. You have {len(tickets)} ticket(s) with TeleCorp:
+
+{chr(10).join(ticket_list)}
+
+Would you like to:
+• Discuss one of these existing tickets (just tell me the number)
+• Create a new support request
+• Ask questions about your service
+
+Which would you prefer?"""
+
+        return response
+
+    except Exception as e:
+        logger.error(f"Failed to get user tickets: {str(e)}")
+        return "I'm having trouble accessing your ticket history right now. Let me help you with your current question instead. What can I assist you with today?"
+
+
+@tool
+async def get_ticket_details(ticket_id: str, customer_email: str) -> str:
+    """
+    Get detailed information about a specific ticket.
+
+    Use this tool when a customer wants to discuss a specific ticket
+    that was found in their ticket history.
+
+    Args:
+        ticket_id: The Zendesk ticket ID to retrieve details for
+        customer_email: Customer's email to verify ownership
+
+    Returns:
+        Detailed ticket information including description, status, and recent updates
+    """
+    try:
+        if not ticket_id or not customer_email:
+            return "I'll need both the ticket ID and your email address to look up the ticket details."
+
+        # Use existing Zendesk service to get ticket details
+        async with await get_zendesk_client() as zendesk_client:
+            ticket_service = TicketService(zendesk_client)
+
+            # Get the specific ticket
+            ticket = await ticket_service.get_ticket_by_id(int(ticket_id))
+
+            if not ticket:
+                return f"I couldn't find ticket #{ticket_id}. Please double-check the ticket number."
+
+        # Format ticket details for presentation
+        status_emoji = {
+            'new': '🆕 New',
+            'open': '📂 Open',
+            'pending': '⏳ Pending',
+            'hold': '⏸️ On Hold',
+            'solved': '✅ Solved',
+            'closed': '📁 Closed'
+        }.get(ticket.status, f'📄 {ticket.status.title()}')
+
+        priority_emoji = {
+            'low': '🔵 Low',
+            'normal': '🟢 Normal',
+            'high': '🟡 High',
+            'urgent': '🔴 Urgent'
+        }.get(ticket.priority, f'📋 {ticket.priority.title()}')
+
+        response = f"""Here are the details for Ticket #{ticket.id}:
+
+**Subject:** {ticket.subject}
+**Status:** {status_emoji}
+**Priority:** {priority_emoji}
+**Created:** {ticket.created_at.strftime('%B %d, %Y at %I:%M %p') if ticket.created_at else 'Unknown'}
+
+**Original Request:**
+{ticket.description[:500] if ticket.description else 'No description available'}{"..." if ticket.description and len(ticket.description) > 500 else ""}
+
+How can I help you with this ticket? Would you like to:
+• Check for updates on this issue
+• Add more information
+• Ask questions about the resolution
+• Something else?"""
+
+        return response
+
+    except Exception as e:
+        logger.error(f"Failed to get ticket details for {ticket_id}: {str(e)}")
+        return f"I'm having trouble accessing the details for ticket #{ticket_id}. Let me know what specific question you have about this ticket and I'll do my best to help."
+
+
 # Export the tools
-zendesk_tools_clean = [create_support_ticket, create_sales_ticket]
+zendesk_tools_clean = [create_support_ticket, create_sales_ticket, get_user_tickets, get_ticket_details]

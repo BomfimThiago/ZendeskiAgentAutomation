@@ -79,7 +79,7 @@ async def support_agent_node(state: ConversationState) -> ConversationState:
 
                 if tool_func:
                     try:
-                        tool_result = tool_func.invoke(tool_args)
+                        tool_result = await tool_func.ainvoke(tool_args)
                         tool_messages.append({
                             "role": "tool",
                             "content": str(tool_result),
