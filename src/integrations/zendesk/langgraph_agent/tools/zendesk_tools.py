@@ -37,29 +37,35 @@ PRIORITY_EMOJIS = {
 }
 
 VALIDATION_MESSAGES = {
-    "missing_name_email_support": """I'd be happy to create a support ticket for you! To ensure our team can follow up properly, I'll need to get some information from you first.
+    "missing_name_email_support": """
+        I'd be happy to create a support ticket for you! To ensure our team can follow up properly, I'll need to get some information from you first.
 
-    Could you please provide:
-    • Your full name
-    • Your email address
+        Could you please provide:
+        • Your full name
+        • Your email address
 
-    Once I have this information, I'll create your support ticket right away.""",
-        "missing_name_email_sales": """I'm excited to help you with TeleCorp services! To ensure our sales team can provide you with personalized assistance and follow up properly, I'll need to get some information from you first.
+        Once I have this information, I'll create your support ticket right away.
+    """,
+    
+    "missing_name_email_sales": """
+        I'm excited to help you with TeleCorp services! To ensure our sales team can provide you with personalized assistance and follow up properly, I'll need to get some information from you first.
 
-    Could you please provide:
-    • Your full name
-    • Your email address
+        Could you please provide:
+        • Your full name
+        • Your email address
 
-    Once I have this information, I'll prioritize your sales inquiry and get you connected with our best specialists!""",
-        "missing_email_support": "Thanks, {name}! I have your name, but I'll also need your email address so our support team can follow up with you directly.\n\nCould you please provide your email address? Once I have that, I'll create your support ticket immediately.",
-        "missing_email_sales": """Great to meet you, {name}! I'm excited to help you find the perfect TeleCorp solution. To ensure our sales team can follow up with personalized pricing and options, I'll need your email address and phone number.
+        Once I have this information, I'll prioritize your sales inquiry and get you connected with our best specialists!
+    """,
+    "missing_email_support": "Thanks, {name}! I have your name, but I'll also need your email address so our support team can follow up with you directly.\n\nCould you please provide your email address? Once I have that, I'll create your support ticket immediately.",
+    "missing_email_sales": """Great to meet you, {name}! I'm excited to help you find the perfect TeleCorp solution. To ensure our sales team can follow up with personalized pricing and options, I'll need your email address and phone number.
 
-    Could you please provide:
-    • Your email address
-    • Your phone number
+        Could you please provide:
+        • Your email address
+        • Your phone number
 
-    Once I have this information, I'll create a high-priority sales ticket and you'll hear from our specialists within hours!""",
-        "missing_phone": "Perfect, {name}! I have your email ({email}). For the best sales experience, I'd also like to get your phone number so our sales specialists can reach you directly for faster service.\n\nCould you please provide your phone number? This ensures you get the quickest response from our team!",
+        Once I have this information, I'll create a high-priority sales ticket and you'll hear from our specialists within hours!
+    """,
+    "missing_phone": "Perfect, {name}! I have your email ({email}). For the best sales experience, I'd also like to get your phone number so our sales specialists can reach you directly for faster service.\n\nCould you please provide your phone number? This ensures you get the quickest response from our team!",
     }
 
 HIDDEN_TICKET_TAGS = ["[SALES]", "[HOT LEAD]", "[LEAD]"]
