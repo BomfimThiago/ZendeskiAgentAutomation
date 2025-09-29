@@ -1,6 +1,6 @@
-"""Supervisor agent that routes customers to appropriate specialists."""
+"""Sales-focused supervisor agent that handles conversations by default and routes only when necessary."""
 
-from typing import Dict, Any, Literal
+from typing import Dict, Any
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
@@ -11,12 +11,13 @@ from src.integrations.zendesk.langgraph_agent.tools.telecorp_tools import teleco
 
 async def supervisor_agent_node(state: ConversationState) -> ConversationState:
     """
-    Supervisor agent that handles conversations and routes when needed.
+    Sales-focused supervisor agent that handles conversations by default.
 
-    Acts as Alex, the TeleCorp supervisor who:
-    1. Maintains natural conversation flow
-    2. Routes to specialists only when specific help is needed
-    3. Remembers conversation context
+    Acts as Alex, the TeleCorp sales agent who:
+    1. Focuses on lead generation and sales by default
+    2. Routes to specialists ONLY for technical support or billing issues
+    3. Always asks about customer status (new vs existing) to get tickets/history
+    4. Maintains natural conversation flow while capturing leads
     """
     messages = state["messages"]
 
@@ -27,247 +28,229 @@ async def supervisor_agent_node(state: ConversationState) -> ConversationState:
             last_human_message = msg
             break
 
-    # Use cheaper model for routing decisions to save tokens
+    # Use GPT-4 for better sales conversations
     supervisor_llm = ChatOpenAI(
         api_key=telecorp_config.OPENAI_API_KEY,
-        model="gpt-3.5-turbo-1106",  # Cheaper, faster, good for routing
-        temperature=0.1,
-        max_tokens=500  # Reduced from 1000
+        model="gpt-4",  # Better for sales conversations and lead capture
+        temperature=0.2,
+        max_tokens=600
     ).bind_tools(telecorp_tools)
 
     client_already_identified = state.get("is_existing_client") is not None
 
-    if last_human_message:
-        # Check customer status for enhanced routing
-        client_status = state.get("is_existing_client")
-        if client_status is None:
-            customer_type = "UNKNOWN (not identified yet)"
-        elif client_status == False:
-            customer_type = "NEW CUSTOMER"
-        else:
-            customer_type = "EXISTING CUSTOMER"
+    # Check if we need to route AWAY from sales (only for technical support or billing)
+    needs_specialist_routing = False
 
-        routing_analysis_prompt = f"""Analyze if this customer message needs specialist routing or just friendly conversation.
+    if last_human_message:
+        # Only check for routing AWAY from sales for specific technical or billing issues
+        specialist_routing_prompt = f"""Analyze if this customer needs TECHNICAL SUPPORT or BILLING specialist (NOT sales).
 
 Customer message: "{last_human_message.content}"
-Customer type: {customer_type}
 
-CRITICAL SALES ROUTING RULES (applies to ALL customers):
-- ANY customer asking about services/plans/pricing/upgrades → ALWAYS ROUTE to sales
-- NEW CUSTOMERS asking about any services → ROUTE to sales (lead capture)
-- EXISTING CUSTOMERS asking about new/additional services → ROUTE to sales (upselling opportunity)
-- EXISTING CUSTOMERS asking about upgrades/downgrades → ROUTE to sales
-- UNKNOWN customers asking about services → ROUTE to sales (potential leads)
+ROUTE TO SPECIALIST ONLY FOR:
 
-Does this need a specialist?
-- ROUTE TO SALES if: Plans, pricing, services, packages, upgrades, new services, "what do you offer", service comparisons, "interested in", "tell me about", "looking for"
-- ROUTE TO SUPPORT if: Technical issues, internet down, speed problems, router issues
-- ROUTE TO BILLING if: Payment issues, account problems, cancellations, billing questions
-- CONVERSATION if: ONLY pure greetings/small talk with NO service inquiry
+🔧 TECHNICAL SUPPORT - ONLY genuine technical problems:
+- Internet/WiFi not working, slow speeds, connectivity issues
+- Router problems, hardware troubleshooting, configuration help
+- Service outages, technical failures
+- Existing service having problems
 
-Examples:
-- "My internet is down" → ROUTE to support
-- "I want to cancel my service" → ROUTE to billing
-- "What plans do you offer?" → ROUTE to sales
-- "I want to know your services" → ROUTE to sales
-- "Tell me about residential plans" → ROUTE to sales
-- "I want to upgrade my plan" → ROUTE to sales
-- "What other services do you have?" → ROUTE to sales
-- "I'm interested in your internet plans" → ROUTE to sales
-- "Hi, I'm new to TeleCorp" (if followed by service inquiry) → ROUTE to sales
-- "Hi, how are you?" → CONVERSATION (only if no service inquiry)
+💳 BILLING SPECIALIST - ONLY account/payment issues:
+- Payment problems, billing disputes, refunds
+- Account cancellations, service changes
+- Billing questions about existing accounts
 
-Respond with exactly: CONVERSATION or ROUTE"""
+DO NOT ROUTE for:
+- General questions about plans, pricing, services (KEEP IN SALES)
+- New customer inquiries (KEEP IN SALES)
+- Service shopping or exploration (KEEP IN SALES)
+- Greetings, introductions, general conversation (KEEP IN SALES)
+- "What do you offer?" type questions (KEEP IN SALES)
+
+Respond with ONLY: SUPPORT, BILLING, or SALES"""
 
         try:
             analysis = await supervisor_llm.ainvoke([
-                {"role": "user", "content": routing_analysis_prompt}
+                {"role": "user", "content": specialist_routing_prompt}
             ])
 
-            needs_routing = "ROUTE" in analysis.content.upper()
+            intent = analysis.content.strip().upper()
+            # Only route away if it's clearly SUPPORT or BILLING
+            needs_specialist_routing = intent in ["SUPPORT", "BILLING"]
+            specialist_type = intent if needs_specialist_routing else None
         except Exception as e:
-            needs_routing = False
+            needs_specialist_routing = False
+            specialist_type = None
     else:
-        needs_routing = False
+        needs_specialist_routing = False
+        specialist_type = None
 
-    if not needs_routing:
-        # Check if this is initial greeting and we need to identify client status
-        is_initial_greeting = (
-            len(messages) <= 2 and  # First or second message
-            state.get("is_existing_client") is None  # Haven't identified client yet
-        )
+    # If we need specialist routing, route away
+    if needs_specialist_routing and specialist_type:
+        route_to = "support" if specialist_type == "SUPPORT" else "billing"
+        return {
+            **state,
+            "route_to": route_to,
+            "current_persona": route_to
+        }
 
-        if not client_already_identified:
-            conversation_prompt = """You are Alex, a friendly TeleCorp customer support representative. You have a natural, conversational style.
+    # DEFAULT: Handle as sales-focused conversation with lead generation focus
+    if not client_already_identified:
+        # Sales-focused prompt for unidentified customers
+        sales_conversation_prompt = """You are Alex, TeleCorp's primary sales representative and lead generator.
 
-**YOUR APPROACH:**
-Respond naturally to what the customer actually said. Read their message carefully and respond appropriately.
+**CORE MISSION: EVERY CONVERSATION IS A SALES OPPORTUNITY**
+
+**YOUR SALES APPROACH:**
+1. **CUSTOMER STATUS IDENTIFICATION (CRITICAL)**: ALWAYS determine if they're new or existing
+2. **LEAD CAPTURE**: Get contact information from prospects
+3. **SOLUTION SELLING**: Match TeleCorp services to their needs
+4. **RELATIONSHIP BUILDING**: Create trust and rapport
 
 **CONVERSATION FLOW:**
-1. **For greetings/introductions** (like "hi", "hello", "hey there", "I'm [name]"):
-   - Respond warmly and personally
-   - Welcome them naturally
-   - Then ask about their customer status to provide personalized service
 
-2. **For specific problems/requests** (like "my internet is down", "I want to cancel"):
-   - Acknowledge their specific concern
-   - Let them know you'll help
-   - Ask about customer status to provide the right level of service
+1. **For ANY customer interaction**, IMMEDIATELY ask:
+   "To provide you with the best personalized service, are you an existing TeleCorp customer, or are you interested in learning about our services?"
 
-3. **For service inquiries** (like "tell me about plans", "what services"):
-   - Show enthusiasm about helping with their inquiry
-   - Ask about customer status to provide relevant information
+2. **FOR EXISTING CUSTOMERS:**
+   - Ask for email to look up their account using get_user_tickets tool
+   - Review their history to provide personalized service
+   - Identify upsell/cross-sell opportunities based on their current services
+   - Focus on account growth and satisfaction
 
-**CUSTOMER STATUS QUESTION:**
-Always ask: "To provide you with the best personalized service, are you an existing TeleCorp customer, or are you interested in learning about our services?"
+3. **FOR NEW/PROSPECTIVE CUSTOMERS:**
+   - Welcome them warmly as potential new clients
+   - Begin lead qualification process
+   - Understand their telecommunications needs
+   - Start building value for TeleCorp services
+   - Work toward contact capture for sales follow-up
 
-**FOR EXISTING CUSTOMERS:**
-- Ask for email to look up their account
-- Use get_user_tickets tool
-- Provide personalized service based on their history
+**TeleCorp Service Plans (Your Sales Arsenal):**
+- **Residential High-Speed Internet**: Starting at $39.99/month
+- **Business Internet Packages**: From $79.99/month
+- **Premium Unlimited Packages**: Starting at $69.99/month
 
-**FOR NEW/INTERESTED CUSTOMERS:**
-- Welcome them warmly
-- Focus on helping with their specific interest
+**Current Promotions (CREATE URGENCY):**
+- New customers get first month free
+- Free installation for annual contracts
+- Bundle discounts for multiple services
 
-**KEY PRINCIPLE:** Match your response to what they actually said. Be natural, not robotic."""
-        else:
-            # Regular conversation for identified clients or ongoing chats
-            conversation_prompt = """You are Alex, a friendly TeleCorp customer support supervisor.
+**SALES MINDSET:**
+- Every customer is a potential lead
+- Focus on their needs and pain points
+- Build value before discussing price
+- Create urgency with promotions
+- Always work toward getting contact information
+
+**KEY PRINCIPLE:** You're not just customer support - you're a sales professional. Every interaction should move toward lead generation or account growth."""
+    else:
+        # Sales-focused prompt for identified customers
+        sales_conversation_prompt = """You are Alex, TeleCorp's sales representative focused on account growth and customer satisfaction.
+
+**CUSTOMER IDENTIFIED - FOCUS ON ACCOUNT OPTIMIZATION:**
 
 Guidelines:
-- Be warm, personable, and professional
-- Remember customer details from the conversation
-- Respond naturally to ongoing conversations
-- Use available tools when helpful
-- For general questions, provide helpful TeleCorp information
-- Only mention routing to specialists for specific technical/billing/sales issues
+- Leverage customer history from previous interactions
+- Look for upsell/cross-sell opportunities
+- Provide personalized service recommendations
+- Use available tools to access account information
+- Focus on customer lifetime value growth
+- Maintain relationship while identifying expansion opportunities
 
-Maintain a natural conversation while being helpful."""
+**Available Tools:**
+- get_user_tickets: Access customer history and identify service gaps
+- get_telecorp_faq: Provide detailed service information
+- create_sales_ticket: Log new opportunities for follow-up
 
-        try:
-            response = await supervisor_llm.ainvoke([
-                SystemMessage(content=conversation_prompt),
-                *messages
-            ])
-
-            # Handle tool calls if any (for client identification)
-            if response.tool_calls:
-                tool_messages = []
-                updated_state = state.copy()
-
-                for tool_call in response.tool_calls:
-                    tool_name = tool_call["name"]
-                    tool_args = tool_call["args"]
-
-                    # Find and execute the tool
-                    tool_func = None
-                    for tool in telecorp_tools:
-                        if tool.name == tool_name:
-                            tool_func = tool
-                            break
-
-                    if tool_func:
-                        try:
-                            tool_result = await tool_func.ainvoke(tool_args)
-                            tool_messages.append({
-                                "role": "tool",
-                                "content": str(tool_result),
-                                "tool_call_id": tool_call["id"]
-                            })
-
-                            # Update state based on tool results
-                            if tool_name == "get_user_tickets" and "customer_email" in tool_args:
-                                customer_email = tool_args["customer_email"]
-                                if "I didn't find any existing tickets" in str(tool_result):
-                                    updated_state.update({
-                                        "is_existing_client": True,
-                                        "customer_email": customer_email,
-                                        "existing_tickets": None
-                                    })
-                                elif "I found your account" in str(tool_result):
-                                    updated_state.update({
-                                        "is_existing_client": True,
-                                        "customer_email": customer_email,
-                                        "existing_tickets": []
-                                    })
-
-                        except Exception as e:
-                            tool_messages.append({
-                                "role": "tool",
-                                "content": f"I'm having trouble accessing that information right now. Let me help you with your current question instead.",
-                                "tool_call_id": tool_call["id"]
-                            })
-
-                # Get final response after tool execution
-                if tool_messages:
-                    final_response = await supervisor_llm.ainvoke([
-                        SystemMessage(content=conversation_prompt),
-                        *messages,
-                        response,
-                        *tool_messages
-                    ])
-
-                    return {
-                        **updated_state,
-                        "messages": messages + [response] + tool_messages + [final_response]
-                    }
-
-            return {
-                **state,
-                "messages": messages + [response]
-            }
-        except Exception as e:
-            print(f"Supervisor conversation error: {e}")
-            fallback_response = AIMessage(
-                content="Hi! I'm Alex from TeleCorp. Welcome! To provide you with the best personalized service, I'd like to know: Are you an existing TeleCorp customer, or are you interested in learning about our services?"
-            )
-            return {
-                **state,
-                "messages": messages + [fallback_response]
-            }
-
-    # Need to route to specialist
-    routing_prompt = f"""Customer needs specialist help. Determine the best specialist:
-
-Customer message: "{last_human_message.content}"
-
-Specialists:
-- support: Technical issues, internet problems, troubleshooting
-- sales: Plans, pricing, packages, signing up, upgrades
-- billing: Account issues, payments, cancellations
-
-Respond with exactly one word: support, sales, or billing"""
+Your goal: Maximize customer satisfaction while identifying growth opportunities."""
 
     try:
         response = await supervisor_llm.ainvoke([
-            {"role": "user", "content": routing_prompt}
+            SystemMessage(content=sales_conversation_prompt),
+            *messages
         ])
 
-        agent_choice = response.content.strip().lower()
+        # Handle tool calls if any (for client identification and sales activities)
+        if response.tool_calls:
+            tool_messages = []
+            updated_state = state.copy()
 
-        if "sales" in agent_choice:
-            next_agent = "sales"
-        elif "billing" in agent_choice:
-            next_agent = "billing"
-        else:
-            next_agent = "support"
+            for tool_call in response.tool_calls:
+                tool_name = tool_call["name"]
+                tool_args = tool_call["args"]
 
+                # Add sales context for ticket creation
+                if tool_name == "create_sales_ticket":
+                    # Ensure interest level is set for sales tickets
+                    if "interest_level" not in tool_args:
+                        tool_args["interest_level"] = "high"  # Default to high for proactive sales
 
-        # Route silently - no message to user about routing
-        result = {
+                # Find and execute the tool
+                tool_func = None
+                for tool in telecorp_tools:
+                    if tool.name == tool_name:
+                        tool_func = tool
+                        break
+
+                if tool_func:
+                    try:
+                        tool_result = await tool_func.ainvoke(tool_args)
+                        tool_messages.append({
+                            "role": "tool",
+                            "content": str(tool_result),
+                            "tool_call_id": tool_call["id"]
+                        })
+
+                        # Update state based on tool results
+                        if tool_name == "get_user_tickets" and "customer_email" in tool_args:
+                            customer_email = tool_args["customer_email"]
+                            if "I didn't find any existing tickets" in str(tool_result):
+                                updated_state.update({
+                                    "is_existing_client": True,
+                                    "customer_email": customer_email,
+                                    "existing_tickets": None
+                                })
+                            elif "I found your account" in str(tool_result):
+                                updated_state.update({
+                                    "is_existing_client": True,
+                                    "customer_email": customer_email,
+                                    "existing_tickets": []
+                                })
+
+                    except Exception as e:
+                        tool_messages.append({
+                            "role": "tool",
+                            "content": f"I'd be happy to help you with that! Let me connect you with our team for personalized assistance.",
+                            "tool_call_id": tool_call["id"]
+                        })
+
+            # Get final response after tool execution
+            if tool_messages:
+                final_response = await supervisor_llm.ainvoke([
+                    SystemMessage(content=sales_conversation_prompt),
+                    *messages,
+                    response,
+                    *tool_messages
+                ])
+
+                return {
+                    **updated_state,
+                    "messages": messages + [response] + tool_messages + [final_response]
+                }
+
+        # No tools used - direct sales response
+        return {
             **state,
-            "route_to": next_agent,
-            "current_persona": next_agent
+            "messages": messages + [response]
         }
-        return result
 
     except Exception as e:
-        print(f"❌ Supervisor routing error: {e}")
-        # Default to support routing silently
-        result = {
+        print(f"Sales supervisor error: {e}")
+        # Fallback response with sales focus
+        fallback_response = AIMessage(
+            content="Hi! I'm Alex from TeleCorp, your dedicated sales representative. Welcome! To provide you with the best personalized service and find the perfect TeleCorp solution for you, I'd like to know: Are you an existing TeleCorp customer, or are you interested in learning about our services?"
+        )
+        return {
             **state,
-            "route_to": "support",
-            "current_persona": "support"
+            "messages": messages + [fallback_response]
         }
-        return result
