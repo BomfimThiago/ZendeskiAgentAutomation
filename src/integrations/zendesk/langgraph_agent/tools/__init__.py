@@ -1,6 +1,5 @@
-"""Tools for Zendesk integration with LangGraph."""
+"""Tools for TeleCorp LangGraph Agent."""
 
-# Note: Zendesk tools will be implemented when Zendesk API integration is needed
-# For now, we focus on the core chat functionality
+from .telecorp_tools import telecorp_tools
 
-__all__ = []
+__all__ = ['telecorp_tools']

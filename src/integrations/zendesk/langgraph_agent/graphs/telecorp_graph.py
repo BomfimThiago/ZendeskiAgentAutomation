@@ -1,84 +1,141 @@
-"""Main TeleCorp customer support LangGraph workflow."""
+"""Simplified TeleCorp customer support LangGraph workflow."""
 
 import os
 from langgraph.graph import StateGraph, END
-from typing import Literal
+from langgraph.prebuilt import ToolNode
+from langchain_core.messages import HumanMessage, AIMessage
 
-from ..state.conversation_state import ConversationState
-from ..nodes.security_guard import security_guard_node
-from ..nodes.context_router import context_router_node
-from ..nodes.telecorp_agent import telecorp_agent_node
-from ..nodes.response_filter import response_filter_node
-from ..config.langgraph_config import telecorp_config
+from src.integrations.zendesk.langgraph_agent.state.conversation_state import ConversationState
+from src.integrations.zendesk.langgraph_agent.nodes.guardrail_node import guardrail_node
+from src.integrations.zendesk.langgraph_agent.nodes.conversation_router import conversation_router_node
+from src.integrations.zendesk.langgraph_agent.nodes.general_agent import general_agent_node
+from src.integrations.zendesk.langgraph_agent.nodes.sales_agent import sales_agent_node
+from src.integrations.zendesk.langgraph_agent.tools.telecorp_tools import telecorp_tools
+from src.integrations.zendesk.langgraph_agent.config.langgraph_config import telecorp_config
 
 # Set up LangSmith tracing
-os.environ["LANGCHAIN_TRACING_V2"] = telecorp_config.LANGCHAIN_TRACING_V2
+os.environ.setdefault("LANGCHAIN_TRACING_V2", telecorp_config.LANGCHAIN_TRACING_V2)
 if telecorp_config.LANGCHAIN_API_KEY:
-    os.environ["LANGCHAIN_API_KEY"] = telecorp_config.LANGCHAIN_API_KEY
-os.environ["LANGCHAIN_PROJECT"] = telecorp_config.LANGCHAIN_PROJECT
-os.environ["LANGSMITH_ENDPOINT"] = telecorp_config.LANGSMITH_ENDPOINT
+    os.environ.setdefault("LANGCHAIN_API_KEY", telecorp_config.LANGCHAIN_API_KEY)
+os.environ.setdefault("LANGCHAIN_PROJECT", telecorp_config.LANGCHAIN_PROJECT)
+os.environ.setdefault("LANGSMITH_ENDPOINT", telecorp_config.LANGSMITH_ENDPOINT)
 
 
-def should_continue_after_security(state: ConversationState) -> Literal["context_router", "end"]:
-    """Conditional routing after security check."""
-    if state.get("is_secure", False):
-        return "context_router"
+def should_continue_after_guardrail(state: ConversationState) -> str:
+    """Check if guardrail blocked the request."""
+    messages = state["messages"]
+    if not messages:
+        return "router"
+
+    last_message = messages[-1]
+
+    # If the last message is from AI and contains safety language, we're done
+    if (isinstance(last_message, AIMessage) and
+        "maintain consistent professional standards" in last_message.content):
+        return END
+
+    return "router"
+
+
+def should_continue_after_router(state: ConversationState) -> str:
+    """Route to appropriate agent based on conversation type."""
+    conversation_type = state.get("conversation_type", "general")
+
+    if conversation_type == "sales":
+        return "sales_agent"
     else:
-        return "end"
+        return "general_agent"
 
 
-def should_continue_after_routing(state: ConversationState) -> Literal["telecorp_agent", "end"]:
-    """Conditional routing after context routing."""
-    # For now, always continue to TeleCorp agent
-    # In future, this could route to ticket lookup or other specialized nodes
-    return "telecorp_agent"
+def should_continue_after_agent(state: ConversationState) -> str:
+    """Check if agent wants to use tools."""
+    messages = state["messages"]
+    last_message = messages[-1]
+
+    # If the last message has tool calls, execute them
+    if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+        return "tools"
+
+    # Otherwise we're done
+    return END
 
 
-def create_telecorp_graph() -> StateGraph:
+def create_telecorp_graph():
     """
-    Create the main TeleCorp customer support workflow graph.
+    Create a simple, clean TeleCorp customer support workflow.
 
-    Workflow:
-    1. Security Guard - Validate input for threats
-    2. Context Router - Determine conversation type
-    3. TeleCorp Agent - Process with LLM
-    4. Response Filter - Validate output
+    Following LangGraph best practices:
+    1. Simple flow with tool integration
+    2. Message-based state management
+    3. Clear, focused responsibilities for each node
     """
 
-    # Create the state graph
     graph = StateGraph(ConversationState)
 
-    # Add nodes
-    graph.add_node("security_guard", security_guard_node)
-    graph.add_node("context_router", context_router_node)
-    graph.add_node("telecorp_agent", telecorp_agent_node)
-    graph.add_node("response_filter", response_filter_node)
+    # Add all nodes
+    graph.add_node("guardrail", guardrail_node)
+    graph.add_node("router", conversation_router_node)
+    graph.add_node("general_agent", general_agent_node)
+    graph.add_node("sales_agent", sales_agent_node)
+    graph.add_node("tools", ToolNode(telecorp_tools))
 
     # Set entry point
-    graph.set_entry_point("security_guard")
+    graph.set_entry_point("guardrail")
 
-    # Add edges with conditional logic
+    # Add conditional routing
     graph.add_conditional_edges(
-        "security_guard",
-        should_continue_after_security,
+        "guardrail",
+        should_continue_after_guardrail,
         {
-            "context_router": "context_router",
-            "end": END
+            "router": "router",
+            END: END
         }
     )
 
     graph.add_conditional_edges(
-        "context_router",
-        should_continue_after_routing,
+        "router",
+        should_continue_after_router,
         {
-            "telecorp_agent": "telecorp_agent",
-            "end": END
+            "general_agent": "general_agent",
+            "sales_agent": "sales_agent"
         }
     )
 
-    # Linear flow after LLM processing
-    graph.add_edge("telecorp_agent", "response_filter")
-    graph.add_edge("response_filter", END)
+    # Both agents can use tools
+    graph.add_conditional_edges(
+        "general_agent",
+        should_continue_after_agent,
+        {
+            "tools": "tools",
+            END: END
+        }
+    )
 
-    # Compile the graph
+    graph.add_conditional_edges(
+        "sales_agent",
+        should_continue_after_agent,
+        {
+            "tools": "tools",
+            END: END
+        }
+    )
+
+    # After tools, route back based on current persona
+    def route_after_tools(state: ConversationState) -> str:
+        current_persona = state.get("current_persona", "general_alex")
+        if current_persona == "sales_alex":
+            return "sales_agent"
+        else:
+            return "general_agent"
+
+    graph.add_conditional_edges(
+        "tools",
+        route_after_tools,
+        {
+            "general_agent": "general_agent",
+            "sales_agent": "sales_agent"
+        }
+    )
+
+    # Compile and return
     return graph.compile()

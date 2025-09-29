@@ -11,7 +11,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from .input_validator import ThreatLevel, ViolationType
-from ..config.langgraph_config import telecorp_config
+from src.integrations.zendesk.langgraph_agent.config.langgraph_config import telecorp_config
 
 
 class LLMGuardrailValidator:
@@ -19,7 +19,7 @@ class LLMGuardrailValidator:
 
     def __init__(self):
         self.llm = ChatOpenAI(
-            openai_api_key=telecorp_config.OPENAI_API_KEY,
+            api_key=telecorp_config.OPENAI_API_KEY,
             model="gpt-3.5-turbo",  # Use faster, cheaper model for guardrails
             temperature=0.0,  # Deterministic responses for security
             max_tokens=100    # Short responses for classification
