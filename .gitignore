@@ -281,7 +281,3 @@ docker-compose.override.yml
 # API documentation
 docs/build/
 docs/dist/
-
-# Knowledge base files (PDFs should not be committed)
-telecorpBaseKnowledge/*.pdf
-telecorpBaseKnowledge/**/*.pdf
