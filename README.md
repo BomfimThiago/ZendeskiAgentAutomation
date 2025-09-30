@@ -64,17 +64,44 @@ uv pip install -e .
 
 ### 5. Set Up Environment Variables
 
-Create a `.env` file in the project root:
+Create a `.env` file in the project root by copying the example:
 
 ```bash
-# OpenAI Configuration
-OPENAI_API_KEY=your_openai_api_key_here
-
-# Zendesk Configuration
-ZENDESK_SUBDOMAIN=your_subdomain
-ZENDESK_EMAIL=your_email@example.com
-ZENDESK_API_TOKEN=your_zendesk_api_token
+cp .env.example .env
 ```
+
+Then edit `.env` and configure the following **required** variables:
+
+```bash
+# Zendesk Configuration (REQUIRED)
+# Get from: https://your-subdomain.zendesk.com/admin/apps-integrations/apis/zendesk-api
+ZENDESK_URL=your-subdomain.zendesk.com
+ZENDESK_EMAIL=your-zendesk-email@example.com
+ZENDESK_TOKEN=your-zendesk-api-token
+
+# OpenAI Configuration (REQUIRED)
+# Get from: https://platform.openai.com/api-keys
+OPENAI_API_KEY=your-openai-api-key
+```
+
+**Optional configuration** (for advanced features):
+
+```bash
+# LangSmith - For debugging and tracing agent behavior (OPTIONAL)
+# Sign up at: https://smith.langchain.com/
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=your-langsmith-api-key
+LANGCHAIN_PROJECT=telecorp-agent-automation
+
+# CORS - Custom allowed origins (OPTIONAL, has defaults)
+# CORS_ORIGINS=["http://localhost:3000","http://localhost:8080"]
+```
+
+**Important Notes:**
+- `ZENDESK_URL` should be just the subdomain with `.zendesk.com` (e.g., `mycompany.zendesk.com`)
+- All **REQUIRED** variables must be set or the application will fail to start
+- LangSmith variables are optional and only needed if you want to trace agent executions
+- See `.env.example` for the complete list of available configuration options
 
 ### 6. Set Up Knowledge Base
 

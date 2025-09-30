@@ -9,35 +9,38 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    # Zendesk Configuration (REQUIRED)
     ZENDESK_URL: str = ""
     ZENDESK_TOKEN: str = ""
     ZENDESK_EMAIL: str = ""
 
-    # OpenAI Configuration
+    # OpenAI Configuration (REQUIRED)
     OPENAI_API_KEY: str = ""
 
-    # LangSmith Configuration - supporting both old and new variable names
+    # LangSmith Configuration (OPTIONAL) - supporting both old and new variable names
     LANGCHAIN_TRACING_V2: bool = False
     LANGCHAIN_API_KEY: str = ""
     LANGCHAIN_PROJECT: str = ""
     LANGCHAIN_ENDPOINT: str = ""
 
-    # Legacy LangSmith variables (for backward compatibility)
+    # Legacy LangSmith variables (OPTIONAL) - for backward compatibility
     LANGSMITH_TRACING: bool = False
     LANGSMITH_API_KEY: str = ""
     LANGSMITH_PROJECT: str = ""
     LANGSMITH_ENDPOINT: str = ""
 
-    # API Configuration
+    # API Configuration (OPTIONAL - has defaults)
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8080"]
     CORS_HEADERS: list[str] = ["*"]
 
+    # Application Version (OPTIONAL)
     APP_VERSION: str = "1.0.0"
 
     class Config:
         env_file = ".env"
         case_sensitive = True
         extra = "allow"  # Allow extra fields to handle any unexpected variables
+        env_file_encoding = "utf-8"
 
 
 settings = Settings()
