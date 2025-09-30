@@ -286,7 +286,7 @@ User Response
 
 ## 🔧 Configuration
 
-Key settings in `config/langgraph_config.py`:
+Key settings in `src/integrations/zendesk/langgraph_agent/config/langgraph_config.py`:
 ```python
 OPENAI_API_KEY: str          # From environment
 DEFAULT_MODEL: str           # gpt-3.5-turbo
