@@ -24,5 +24,9 @@ I'm going to put here a little bit of my strategy and decisions for this homewor
 
 12 - I could also have explored MCP servers for this. In production, maybe I would build an MCP server with Zendesk tools.
 
+13 - Each agent uses a model from OpenAI. This was a simplification on my part. For each agent, I could research the perfect model in terms of context length (tokens), the data the model was trained on, the price, etc. For example, for the support agent, I could use a model specialized in instructions, and for the sales agent, I could use a model specialized in question and answer. The model's purpose is essential for better performance.
+
+14 - The language of the bot was another topic that I chose to keep in English. The chatbot could be prepared to answer in any language, but for simplicity, I kept it in English.
+
 
 There's a lot I could do, but it made sense to keep it simple for me. Hopefully, this is everything I need for this homework and gives an idea of how powerful a multi-agent system with tools and integration with Zendesk can be.
