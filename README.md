@@ -164,13 +164,7 @@ If you encounter issues, check:
 Test the AI agent with the interactive chat interface:
 
 ```bash
-uv run python3 langgraph_chat_frontend.py
-```
-
-Or run a quick test to verify functionality:
-
-```bash
-uv run python3 test_quick.py
+python3 chat_frontend.py
 ```
 
 ## 🛡️ Security Features Verified
