@@ -92,11 +92,31 @@ Add your knowledge base files (PDFs, text files) to this directory:
 
 ### 7. Run the Project
 
-Run the chat frontend to test the AI agent:
+**Option A: Chat Interface (Standalone)**
+
+Run the interactive chat frontend to test the AI agent directly:
 
 ```bash
 python3 chat_frontend.py
 ```
+
+**Option B: FastAPI Server (API)**
+
+Run the FastAPI server for API access:
+
+```bash
+# Development mode with auto-reload
+uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+
+# Or production mode
+uvicorn src.main:app --host 0.0.0.0 --port 8000
+```
+
+Access the API:
+- API Root: `http://localhost:8000`
+- Health Check: `http://localhost:8000/health`
+- API Documentation: `http://localhost:8000/docs`
+- OpenAPI Spec: `http://localhost:8000/api/v1/openapi.json`
 
 ### 8. Verify Setup
 
@@ -297,13 +317,6 @@ The `ConversationState` tracks:
 - `security_blocked`: Guardrail flag
 - `threat_type`: Type of security threat detected
 
-## 🎯 Recent Improvements
-
-1. **Removed ~745 lines** of unused code (comments, configs, old implementations)
-2. **Refactored tools** - Separated utilities from tool functions
-3. **Simplified routing** - Sales-first with selective specialist routing
-4. **Context-aware guardrails** - Personalized blocking messages
-5. **Clean architecture** - Clear separation of concerns
 
 ## 📦 Dependencies
 
