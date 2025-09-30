@@ -98,12 +98,6 @@ Run the chat frontend to test the AI agent:
 python3 chat_frontend.py
 ```
 
-Or run from the project root:
-
-```bash
-python3 -m src.integrations.zendesk.langgraph_agent.chat_frontend
-```
-
 ### 8. Verify Setup
 
 The system should:
