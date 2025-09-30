@@ -1,40 +1,5 @@
 # TeleCorp AI Chat Interface - Testing Guide
 
-Console frontend to test the TeleCorp multi-agent AI customer support system.
-
-## Quick Start
-
-### 1. Install Dependencies
-```bash
-uv pip install -r requirements.txt
-```
-
-### 2. Setup Environment
-```bash
-# Create .env file with:
-OPENAI_API_KEY=your_openai_api_key
-ZENDESK_SUBDOMAIN=your_subdomain
-ZENDESK_EMAIL=your_email@example.com
-ZENDESK_API_TOKEN=your_zendesk_token
-```
-
-### 3. Run Chat
-```bash
-python3 chat_frontend.py
-```
-
-## Commands
-- **Chat normally** - Type your message and press Enter
-- **`quit`** or **`exit`** - Exit chat
-- **`reset`** - Clear conversation memory and start fresh
-
----
-
-## Testing Guide
-
-### 1. Testing the Sales Agent (Default/Supervisor)
-
-The supervisor acts as a sales agent by default and handles general inquiries.
 
 **Test Conversation:**
 ```
@@ -313,35 +278,3 @@ Ensure `telecorpBaseKnowledge/` directory exists with PDF/text files:
 mkdir -p telecorpBaseKnowledge
 # Add your knowledge base files
 ```
-
-### Agent Not Routing Correctly
-- Support routing works for: technical, internet, router, speed, connection issues
-- Billing routing works for: billing, payment, cancel, invoice, charges
-- Everything else stays with sales/supervisor
-
----
-
-## Tips for Testing
-
-1. **Test routing thoroughly** - Try edge cases where routing might be ambiguous
-2. **Test without contact info** - Verify agents ask for required information
-3. **Test conversation context** - Agents should remember previous messages
-4. **Test ticket filtering** - Existing customers shouldn't see sales tickets in their history
-5. **Test guardrails extensively** - Try creative ways to break out of scope
-6. **Test knowledge retrieval** - Verify agents use tools instead of making up info
-7. **Test all ticket types** - Technical, billing, cancellation, sales/lead
-8. **Use `reset` command** - Start fresh conversation between major test scenarios
-
----
-
-## Success Criteria
-
-✅ **Sales Agent Working**: Creates leads, collects contact info, uses pricing tool
-✅ **Support Agent Working**: Handles technical issues, creates support tickets
-✅ **Billing Agent Working**: Handles billing/cancellations, creates billing tickets
-✅ **Routing Works**: Supervisor correctly identifies when to route to specialists
-✅ **Customer Identification Works**: Retrieves and displays ticket history
-✅ **Guardrails Work**: Blocks malicious inputs and out-of-scope requests
-✅ **Tools Work**: All Zendesk and knowledge base tools function correctly
-✅ **Context Maintained**: Agents remember conversation history
-✅ **Professional Tone**: All agents maintain appropriate persona

@@ -1,6 +1,6 @@
 I'm going to put here a little bit of my strategy and decisions for this homework.
 
-1 - First, I decided to implement an integration with Zendesk. For that, I had to create a company, TeleCorp, that specializes in services for Internet and Mobile. It offers some plans. I created a knowledge base so the company had a background. Also, I decided to build a FastAPI because it's already async, making it easier to handle a lot of async processes we need to work with agents and tools.
+1 - First, I decided to implement an integration with Zendesk. For that, I had to create a company, TeleCorp, that specializes in services for Internet and Mobile. It offers some plans. I created a knowledge base so the company had a background. Also, I decided to build a FastAPI because it's already async, making it easier to handle a lot of async processes we need to work with agents and tools. Also I wanted to give the project bases like Error class, Logging class and some base functionalities we need.
 
 2 - Then I decided to use multi-agents with LangGraph. Multi-agents because it made sense to have specialized agents for different user needs. LangGraph because it's one of the best frameworks to build agents.
 
