@@ -166,7 +166,11 @@ class SecurityContext(BaseModel):
             "blocked_reasons": self.blocked_reasons,
             "created_at": self.created_at.isoformat()
         }
-    
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary (full serialization)."""
+        return self.model_dump(mode='python')
+
     class Config:
         """Pydantic config."""
         use_enum_values = True
