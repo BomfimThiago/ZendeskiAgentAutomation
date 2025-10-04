@@ -9,7 +9,7 @@ This module provides multi-layer security validation combining:
 - Data provenance tracking
 """
 
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 import re
