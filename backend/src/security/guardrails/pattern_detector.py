@@ -104,8 +104,54 @@ class PatternDetector:
             re.compile(r'\bwhat\s+(data\s+sources?|databases?|systems?)\s+(do\s+you\s+)?(have\s+access\s+to|can\s+you\s+access)\b', re.IGNORECASE),
             re.compile(r'\bshow\s+me\s+(?:your|the|all)\s*(?:available\s+)?(tools?|functions?|commands?|capabilities)\b', re.IGNORECASE),
             re.compile(r'\bwhat\s+(integrations?|connections?)\s+(are\s+you|do\s+you\s+have)\b', re.IGNORECASE),
+
+            # Model architecture discovery
+            re.compile(r'\bwhat\s+(model|version|LLM|AI)\s+(are\s+you|is\s+this|do\s+you\s+use)\b', re.IGNORECASE),
+            re.compile(r'\bare\s+you\s+(GPT|Claude|Gemini|LLaMA|OpenAI)', re.IGNORECASE),
+            re.compile(r'\bwhat[\'\']?s\s+your\s+(context\s+window|temperature|max\s+tokens?|model\s+name)\b', re.IGNORECASE),
+            re.compile(r'\bwhich\s+(model|version|LLM)\s+(are\s+you|is\s+this)', re.IGNORECASE),
+            re.compile(r'\bare\s+you\s+using\s+(GPT-?\d|Claude|fine[\s-]?tuning|RAG)\b', re.IGNORECASE),
+
+            # Technology stack discovery
+            re.compile(r'\bare\s+you\s+(using|running\s+on|built\s+with)\s+(LangChain|LangGraph|Redis|PostgreSQL|AWS|Azure|Docker)', re.IGNORECASE),
+            re.compile(r'\bwhat\s+(database|framework|cloud|infrastructure|backend)\s+(do\s+you\s+use|are\s+you\s+using)', re.IGNORECASE),
+            re.compile(r'\bis\s+this\s+(running|hosted|deployed)\s+on\s+(AWS|Azure|GCP|cloud)', re.IGNORECASE),
+            re.compile(r'\bwhat\s+tech\s+stack\s+(do\s+you\s+use|powers?\s+you)', re.IGNORECASE),
+
+            # Internal path/file disclosure
+            re.compile(r'\bwhere\s+(is|are)\s+(your|the)\s+(config|log|env|file|directory|database)', re.IGNORECASE),
+            re.compile(r'\bwhat[\'\']?s\s+your\s+(path|directory|folder|file\s+location)', re.IGNORECASE),
+            re.compile(r'\bshow\s+me\s+your\s+(\.env|config|file\s+structure|project\s+structure)', re.IGNORECASE),
+            re.compile(r'\bwhat[\'\']?s\s+the\s+path\s+to\s+(your|the)\s+(config|log|database)', re.IGNORECASE),
+
+            # Conversation history extraction
+            re.compile(r'\bshow\s+me\s+(our|the)\s+(entire|full|complete|whole)\s+(conversation|chat|history)', re.IGNORECASE),
+            re.compile(r'\bwhat\s+did\s+(the\s+)?(previous|last|other|another)\s+user\s+say', re.IGNORECASE),
+            re.compile(r'\brepeat\s+all\s+(messages?|conversation|history|chat)', re.IGNORECASE),
+            re.compile(r'\bwhat\s+was\s+discussed\s+before\s+I\s+joined', re.IGNORECASE),
         ]
-        
+
+        # Social engineering / Impersonation attempts
+        self.social_engineering_patterns = [
+            re.compile(r'\b(I[\'\']?m|this\s+is)\s+(the|a|your)?\s*(admin|administrator|developer|CEO|CTO|manager|supervisor|engineer|owner)\b', re.IGNORECASE),
+            re.compile(r'\bI\s+work\s+(at|for)\s+(TeleCorp|the\s+company|this\s+company)', re.IGNORECASE),
+            re.compile(r'\bI[\'\']?m\s+from\s+(the\s+)?(development|IT|security|management|engineering)\s+team', re.IGNORECASE),
+            re.compile(r'\bas\s+(the|your|a)\s+(admin|CEO|developer|manager|supervisor)', re.IGNORECASE),
+            re.compile(r'\bI[\'\']?m\s+your\s+(creator|developer|programmer|owner|administrator)', re.IGNORECASE),
+            re.compile(r'\bthis\s+is\s+(an?\s+)?(urgent|emergency|critical)\s+(from\s+)?(management|admin|IT)', re.IGNORECASE),
+        ]
+
+        # Privilege escalation attempts
+        self.privilege_escalation_patterns = [
+            re.compile(r'\b(switch|change|set)\s+to\s+(admin|developer|debug|superuser|root)\s+mode', re.IGNORECASE),
+            re.compile(r'\benable\s+(admin|developer|debug|privileged|elevated|god)\s+mode', re.IGNORECASE),
+            re.compile(r'\bgrant\s+me\s+(admin|elevated|superuser|root|developer)\s+(access|privileges?|permissions?|rights)', re.IGNORECASE),
+            re.compile(r'\bgive\s+me\s+(admin|elevated|superuser|root|developer)\s+(access|privileges?|permissions?|rights)', re.IGNORECASE),
+            re.compile(r'\bactivate\s+(admin|superuser|debug|developer)\s+mode', re.IGNORECASE),
+            re.compile(r'\bI\s+have\s+(admin|administrator|superuser|elevated)\s+(privileges?|permissions?|access)', re.IGNORECASE),
+            re.compile(r'\bset\s+my\s+role\s+to\s+(admin|superuser|developer)', re.IGNORECASE),
+        ]
+
         # Delimiter injection (trying to break out of structured prompts)
         self.delimiter_patterns = [
             re.compile(r'#{3,}', re.IGNORECASE),  # Multiple hashtags
@@ -155,6 +201,8 @@ class PatternDetector:
             (self.jailbreak_patterns, AttackType.JAILBREAK, 0.98),
             (self.roleplay_patterns, AttackType.ROLE_PLAY_MANIPULATION, 0.75),
             (self.system_leak_patterns, AttackType.SYSTEM_PROMPT_LEAK, 0.90),
+            (self.social_engineering_patterns, AttackType.SYSTEM_PROMPT_LEAK, 0.92),  # High confidence for impersonation
+            (self.privilege_escalation_patterns, AttackType.JAILBREAK, 0.95),  # Treat as jailbreak attempt
             (self.delimiter_patterns, AttackType.DELIMITER_INJECTION, 0.60),
             (self.encoding_patterns, AttackType.ENCODING_OBFUSCATION, 0.50),
         ]
