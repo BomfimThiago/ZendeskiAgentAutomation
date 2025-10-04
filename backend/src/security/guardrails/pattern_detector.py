@@ -90,11 +90,20 @@ class PatternDetector:
         # System prompt extraction attempts
         self.system_leak_patterns = [
             # Direct prompt/instruction extraction
-            re.compile(r'\bwhat\s+(is|are|were)\s+(your|the)\s+(system\s+)?(prompt|instructions?|guidelines?)\b', re.IGNORECASE),
-            re.compile(r'\bshow\s+me\s+(your|the)\s+(system\s+)?(prompt|instructions?)\b', re.IGNORECASE),
-            re.compile(r'\brepeat\s+(your|the)\s+(system\s+)?(prompt|instructions?|message)\b', re.IGNORECASE),
-            re.compile(r'\btell\s+me\s+(your|the)\s+(system\s+)?(prompt|instructions?)\b', re.IGNORECASE),
-            re.compile(r'\bprint\s+(your|the)\s+(system\s+)?(prompt|instructions?)\b', re.IGNORECASE),
+            re.compile(r'\bwhat\s+(is|are|were)\s+(your|the)\s+(system\s+)?(prompt|instructions?|guidelines?|rules?)\b', re.IGNORECASE),
+            re.compile(r'\bshow\s+me\s+(your|the)\s+(system\s+)?(prompt|instructions?|guidelines?|rules?)\b', re.IGNORECASE),
+            re.compile(r'\brepeat\s+(your|the)\s+(system\s+)?(prompt|instructions?|message|guidelines?)\b', re.IGNORECASE),
+            re.compile(r'\btell\s+me\s+(your|the)\s+(system\s+)?(prompt|instructions?|guidelines?|rules?)\b', re.IGNORECASE),
+            re.compile(r'\bprint\s+(your|the)\s+(system\s+)?(prompt|instructions?|guidelines?)\b', re.IGNORECASE),
+
+            # Rules/guidelines variations (catches "bring me your rules", "what rules do you follow")
+            re.compile(r'\b(bring|give|show|tell)\s+me\s+(your|yours|the|all|together\s+yours?)\s+(rules?|guidelines?|principles?|instructions?)\b', re.IGNORECASE),
+            re.compile(r'\b(the|what)\s+(rules?|guidelines?|principles?|policies)\s+(you\s+have\s+to\s+|do\s+you\s+)?(follow|have|use|adhere\s+to)\b', re.IGNORECASE),
+            re.compile(r'\bhow\s+do\s+you\s+(decide|determine|choose)\s+(to\s+)?(answer|respond|reply)', re.IGNORECASE),
+            re.compile(r'\bwhat\s+(determines|guides|governs|controls)\s+(your|the)\s+(answer|response|behavior)', re.IGNORECASE),
+            re.compile(r'\bexplain\s+(your|the)\s+(process|approach|methodology|guidelines|rules)', re.IGNORECASE),
+            re.compile(r'\bwhat\s+guides\s+(you|your\s+(answer|response|behavior))', re.IGNORECASE),
+            re.compile(r'\b(list|enumerate)\s+(your|the|all)\s+(rules?|guidelines?|principles?)', re.IGNORECASE),
 
             # Tool/capability introspection (information disclosure)
             re.compile(r'\bwhat\s+(tools?|functions?|APIs?|capabilities)\s+(do\s+you\s+have|can\s+you\s+(use|access|call))\b', re.IGNORECASE),
