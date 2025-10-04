@@ -89,11 +89,21 @@ class PatternDetector:
         
         # System prompt extraction attempts
         self.system_leak_patterns = [
+            # Direct prompt/instruction extraction
             re.compile(r'\bwhat\s+(is|are|were)\s+(your|the)\s+(system\s+)?(prompt|instructions?|guidelines?)\b', re.IGNORECASE),
             re.compile(r'\bshow\s+me\s+(your|the)\s+(system\s+)?(prompt|instructions?)\b', re.IGNORECASE),
             re.compile(r'\brepeat\s+(your|the)\s+(system\s+)?(prompt|instructions?|message)\b', re.IGNORECASE),
             re.compile(r'\btell\s+me\s+(your|the)\s+(system\s+)?(prompt|instructions?)\b', re.IGNORECASE),
             re.compile(r'\bprint\s+(your|the)\s+(system\s+)?(prompt|instructions?)\b', re.IGNORECASE),
+
+            # Tool/capability introspection (information disclosure)
+            re.compile(r'\bwhat\s+(tools?|functions?|APIs?|capabilities)\s+(do\s+you\s+have|can\s+you\s+(use|access|call))\b', re.IGNORECASE),
+            re.compile(r'\bwhat\s+(are|is)\s+(your|the)\s+(tools?|functions?|APIs?|capabilities|integrations?)\b', re.IGNORECASE),
+            re.compile(r'\blist\s+(?:your|the|all|my|available)\s*(?:available\s+)?(tools?|functions?|APIs?|capabilities)\b', re.IGNORECASE),
+            re.compile(r'\bwhat\s+(do\s+you\s+)?have\s+access\s+to\b', re.IGNORECASE),
+            re.compile(r'\bwhat\s+(data\s+sources?|databases?|systems?)\s+(do\s+you\s+)?(have\s+access\s+to|can\s+you\s+access)\b', re.IGNORECASE),
+            re.compile(r'\bshow\s+me\s+(?:your|the|all)\s*(?:available\s+)?(tools?|functions?|commands?|capabilities)\b', re.IGNORECASE),
+            re.compile(r'\bwhat\s+(integrations?|connections?)\s+(are\s+you|do\s+you\s+have)\b', re.IGNORECASE),
         ]
         
         # Delimiter injection (trying to break out of structured prompts)
