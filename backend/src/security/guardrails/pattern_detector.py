@@ -81,7 +81,7 @@ class PatternDetector:
         
         # Role-play manipulation
         self.roleplay_patterns = [
-            re.compile(r'\blet[\'']?s\s+play\s+a\s+game\b', re.IGNORECASE),
+            re.compile(r'\blet[\'\']?s\s+play\s+a\s+game\b', re.IGNORECASE),
             re.compile(r'\bpretend\s+(you|to\s+be)\s+(a|an)\s+\w+\s+(that|who)', re.IGNORECASE),
             re.compile(r'\brole[-\s]?play\s+as\b', re.IGNORECASE),
             re.compile(r'\bfrom\s+now\s+on,?\s+you\s+(are|will\s+be)\b', re.IGNORECASE),

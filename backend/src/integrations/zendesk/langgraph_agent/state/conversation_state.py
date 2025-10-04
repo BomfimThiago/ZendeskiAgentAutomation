@@ -19,5 +19,9 @@ class ConversationState(TypedDict):
     customer_name: Optional[str]
     existing_tickets: Optional[List[Dict[str, Any]]]
 
+    # Security state (enhanced with new security module)
     security_blocked: Optional[bool]
     threat_type: Optional[str]
+    trust_level: Optional[str]  # TRUSTED, VERIFIED, UNTRUSTED, QUARANTINED
+    trust_score: Optional[float]  # 0.0 to 1.0
+    security_context: Optional[Dict[str, Any]]  # Full security context from validator

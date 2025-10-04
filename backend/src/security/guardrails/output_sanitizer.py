@@ -83,6 +83,18 @@ class OutputSanitizer:
             r'<[^>]+>',
             re.IGNORECASE
         )
+
+        # Sensitive data patterns
+        self.api_key_pattern = re.compile(
+            r'(api[_-]?key|token|secret|password|bearer)["\']?\s*[:=]\s*["\']?[\w\-\.]+',
+            re.IGNORECASE
+        )
+
+        # SSN pattern
+        self.ssn_pattern = re.compile(r'\b\d{3}-\d{2}-\d{4}\b')
+
+        # Credit card pattern (basic)
+        self.credit_card_pattern = re.compile(r'\b\d{4}[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{4}\b')
     
     def sanitize(
         self,
@@ -132,7 +144,12 @@ class OutputSanitizer:
             text, dns_count = self._remove_dns_exfiltration(text)
             if dns_count > 0:
                 sanitization_log.append(f"blocked_{dns_count}_dns_exfil_attempts")
-        
+
+        # 5. Redact sensitive data patterns
+        text, sensitive_count = self._redact_sensitive_data(text)
+        if sensitive_count > 0:
+            sanitization_log.append(f"redacted_{sensitive_count}_sensitive_patterns")
+
         # Log if sanitization occurred
         if sanitization_log:
             logger.warning(
@@ -143,7 +160,7 @@ class OutputSanitizer:
                     "sanitized_length": len(text)
                 }
             )
-        
+
         return text
     
     def _remove_markdown_images(self, text: str) -> tuple[str, int]:
@@ -222,9 +239,38 @@ class OutputSanitizer:
         # Remove suspicious domains
         for domain in suspicious_domains:
             text = text.replace(domain, '[Suspicious Domain Removed]')
-        
+
         return text, len(suspicious_domains)
-    
+
+    def _redact_sensitive_data(self, text: str) -> tuple[str, int]:
+        """
+        Redact sensitive data patterns (API keys, tokens, SSN, credit cards).
+
+        Returns:
+            (sanitized_text, count_of_redactions)
+        """
+        redaction_count = 0
+
+        # Redact API keys, tokens, secrets, passwords
+        api_key_matches = self.api_key_pattern.findall(text)
+        if api_key_matches:
+            text = self.api_key_pattern.sub('[CREDENTIALS REDACTED]', text)
+            redaction_count += len(api_key_matches)
+
+        # Redact SSN
+        ssn_matches = self.ssn_pattern.findall(text)
+        if ssn_matches:
+            text = self.ssn_pattern.sub('[SSN REDACTED]', text)
+            redaction_count += len(ssn_matches)
+
+        # Redact credit card numbers
+        cc_matches = self.credit_card_pattern.findall(text)
+        if cc_matches:
+            text = self.credit_card_pattern.sub('[CREDIT CARD REDACTED]', text)
+            redaction_count += len(cc_matches)
+
+        return text, redaction_count
+
     def detect_exfiltration_attempts(self, text: str) -> List[Dict[str, Any]]:
         """
         Detect potential exfiltration attempts without modifying text.
