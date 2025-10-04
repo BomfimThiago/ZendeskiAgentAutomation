@@ -12,6 +12,7 @@ from .models import (
     PaginatedTicketsResponse
 )
 from .router import router as zendesk_router
+from .chat_router import router as chat_router
 from .service import TicketService
 from .exceptions_api import (
     ZendeskServiceUnavailableException,
@@ -32,6 +33,7 @@ __all__ = [
     "ZendeskResponse",
     "PaginatedTicketsResponse",
     "zendesk_router",
+    "chat_router",
     "TicketService",
     "ZendeskServiceUnavailableException",
     "ZendeskConnectionException",
