@@ -168,7 +168,17 @@ def create_telecorp_graph():
     graph.add_edge("billing_agent", "output_sanitization")
     graph.add_edge("output_sanitization", END)
 
-    checkpointer = MemorySaver()
+    # Use DynamoDB checkpointer for production, MemorySaver for dev
+    if settings.USE_BEDROCK:
+        from src.integrations.aws.dynamodb_checkpointer import get_dynamodb_checkpointer
+        checkpointer = get_dynamodb_checkpointer()
+        logger = logging.getLogger("telecorp_graph")
+        logger.info("Using DynamoDB checkpointer for production state persistence")
+    else:
+        checkpointer = MemorySaver()
+        logger = logging.getLogger("telecorp_graph")
+        logger.info("Using MemorySaver checkpointer for development")
+
     compiled_graph = graph.compile(checkpointer=checkpointer)
 
     if langsmith_client and tracing_enabled:
