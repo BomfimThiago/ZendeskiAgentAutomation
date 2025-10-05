@@ -20,18 +20,31 @@ from src.integrations.zendesk.langgraph_agent.state.conversation_state import (
 from src.integrations.zendesk.langgraph_agent.config.langgraph_config import (
     telecorp_config,
 )
+from src.core.config import settings
 from src.core.logging_config import get_logger
 
 logger = get_logger("quarantined_agent")
 
 
-# Quarantined LLM with NO tool access
-quarantined_llm = ChatOpenAI(
-    api_key=telecorp_config.OPENAI_API_KEY,
-    model="gpt-3.5-turbo-1106",  # Smaller, cheaper model for untrusted input
-    temperature=0.7,
-    max_tokens=200,  # Limit output length
-)
+# Quarantined LLM with NO tool access (Q-LLM)
+def get_quarantined_llm():
+    """Initialize quarantined LLM (Q-LLM pattern - no tool access)."""
+    if settings.USE_BEDROCK:
+        # Production: Use Bedrock Claude Haiku (fast, cheap, no tools)
+        from src.integrations.aws.bedrock_llm import get_haiku_llm
+        llm = get_haiku_llm(temperature=0.7, max_tokens=200)
+        logger.info("Q-LLM Quarantined Agent initialized with Bedrock Claude Haiku")
+        return llm
+    else:
+        # Development: Use OpenAI GPT-3.5
+        llm = ChatOpenAI(
+            api_key=telecorp_config.OPENAI_API_KEY,
+            model="gpt-3.5-turbo-1106",
+            temperature=0.7,
+            max_tokens=200,
+        )
+        logger.info("Q-LLM Quarantined Agent initialized with OpenAI GPT-3.5")
+        return llm
 
 
 QUARANTINED_SYSTEM_PROMPT = """You are a helpful customer service assistant for TeleCorp.
@@ -97,6 +110,7 @@ async def quarantined_agent_node(state: ConversationState) -> ConversationState:
         llm_messages.append(msg)
 
     # Get response from quarantined LLM (NO TOOLS)
+    quarantined_llm = get_quarantined_llm()
     response = await quarantined_llm.ainvoke(llm_messages)
 
     logger.info(

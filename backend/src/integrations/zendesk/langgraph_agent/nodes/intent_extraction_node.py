@@ -12,16 +12,13 @@ This provides ARCHITECTURAL guarantee (not probabilistic filtering).
 
 from typing import Dict, Any, Optional
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 import json
 
 from src.integrations.zendesk.langgraph_agent.state.conversation_state import (
     ConversationState,
 )
-from src.integrations.zendesk.langgraph_agent.config.langgraph_config import (
-    telecorp_config,
-)
+from src.core.config import settings
 from src.core.logging_config import get_logger
 
 logger = get_logger("intent_extraction")
@@ -120,12 +117,22 @@ class IntentExtractor:
 
     def __init__(self):
         # Use fast, cheap model for intent extraction (Q-LLM)
-        self.q_llm = ChatOpenAI(
-            api_key=telecorp_config.OPENAI_API_KEY,
-            model="gpt-3.5-turbo-1106",
-            temperature=0.0,
-            max_tokens=300,
-        )
+        if settings.USE_BEDROCK:
+            # Production: Use Bedrock Claude Haiku (fast, cheap)
+            from src.integrations.aws.bedrock_llm import get_haiku_llm
+            self.q_llm = get_haiku_llm(temperature=0.0, max_tokens=300)
+            logger.info("Q-LLM initialized with Bedrock Claude Haiku")
+        else:
+            # Development: Use OpenAI GPT-3.5
+            from langchain_openai import ChatOpenAI
+            from src.integrations.zendesk.langgraph_agent.config.langgraph_config import telecorp_config
+            self.q_llm = ChatOpenAI(
+                api_key=telecorp_config.OPENAI_API_KEY,
+                model="gpt-3.5-turbo-1106",
+                temperature=0.0,
+                max_tokens=300,
+            )
+            logger.info("Q-LLM initialized with OpenAI GPT-3.5")
 
     async def extract_intent(
         self,

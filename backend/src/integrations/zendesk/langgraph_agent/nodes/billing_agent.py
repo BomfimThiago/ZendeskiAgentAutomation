@@ -15,6 +15,7 @@ from src.integrations.zendesk.langgraph_agent.utils.secure_tool_executor import 
     execute_tool_securely,
 )
 from src.security import UnauthorizedToolAccess
+from src.core.config import settings
 from src.core.logging_config import get_logger
 
 logger = get_logger("billing_agent")
@@ -63,12 +64,23 @@ async def billing_agent_node(state: ConversationState) -> ConversationState:
         if entity_parts:
             entity_context = f"\n\n**Context from intent analysis:** {', '.join(entity_parts)}"
 
-    billing_llm = ChatOpenAI(
-        api_key=telecorp_config.OPENAI_API_KEY,
-        model="gpt-4",
-        temperature=0.1,
-        max_tokens=600,
-    ).bind_tools(telecorp_tools)
+    # P-LLM (Privileged LLM with tool access)
+    if settings.USE_BEDROCK:
+        # Production: Use Bedrock Claude Sonnet (powerful)
+        from src.integrations.aws.bedrock_llm import get_sonnet_llm
+        billing_llm = get_sonnet_llm(temperature=0.1, max_tokens=600)
+        logger.info("P-LLM Billing Agent initialized with Bedrock Claude Sonnet")
+    else:
+        # Development: Use OpenAI GPT-4
+        billing_llm = ChatOpenAI(
+            api_key=telecorp_config.OPENAI_API_KEY,
+            model="gpt-4",
+            temperature=0.1,
+            max_tokens=600,
+        )
+        logger.info("P-LLM Billing Agent initialized with OpenAI GPT-4")
+
+    billing_llm = billing_llm.bind_tools(telecorp_tools)
 
     system_prompt = f"""You are Alex from TeleCorp customer support. You continue the conversation seamlessly - the user doesn't know they've been routed to a specialist.
 

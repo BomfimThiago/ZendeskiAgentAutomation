@@ -27,6 +27,7 @@ from src.security import (
     PromptInjectionDetected,
     DataExfiltrationAttempt
 )
+from src.core.config import settings
 from src.core.logging_config import get_logger
 
 logger = get_logger("guardrail_node")
@@ -40,13 +41,21 @@ class SecurityValidator:
         self.input_validator = InputValidator()
         self.output_sanitizer = OutputSanitizer()
 
-        # Keep LLM for semantic analysis as fallback
-        self.validator_llm = ChatOpenAI(
-            api_key=telecorp_config.OPENAI_API_KEY,
-            model="gpt-3.5-turbo-1106",
-            temperature=0.0,
-            max_tokens=150,
-        )
+        # Keep LLM for semantic analysis as fallback (Q-LLM pattern)
+        if settings.USE_BEDROCK:
+            # Production: Use Bedrock Claude Haiku (fast, cheap validator)
+            from src.integrations.aws.bedrock_llm import get_haiku_llm
+            self.validator_llm = get_haiku_llm(temperature=0.0, max_tokens=150)
+            logger.info("Validator LLM initialized with Bedrock Claude Haiku")
+        else:
+            # Development: Use OpenAI GPT-3.5
+            self.validator_llm = ChatOpenAI(
+                api_key=telecorp_config.OPENAI_API_KEY,
+                model="gpt-3.5-turbo-1106",
+                temperature=0.0,
+                max_tokens=150,
+            )
+            logger.info("Validator LLM initialized with OpenAI GPT-3.5")
 
         # Critical danger patterns (still useful for immediate blocking)
         self.critical_danger_patterns = [

@@ -11,6 +11,10 @@ from src.integrations.zendesk.langgraph_agent.config.langgraph_config import (
     telecorp_config,
 )
 from src.integrations.zendesk.langgraph_agent.tools.telecorp_tools import telecorp_tools
+from src.core.config import settings
+from src.core.logging_config import get_logger
+
+logger = get_logger("supervisor_agent")
 
 
 async def supervisor_agent_node(state: ConversationState) -> ConversationState:
@@ -43,12 +47,23 @@ async def supervisor_agent_node(state: ConversationState) -> ConversationState:
     entities = structured_intent.get("entities", {})
     confidence = structured_intent.get("confidence", 0.5)
 
-    supervisor_llm = ChatOpenAI(
-        api_key=telecorp_config.OPENAI_API_KEY,
-        model="gpt-4",
-        temperature=0.2,
-        max_tokens=600,
-    ).bind_tools(telecorp_tools)
+    # P-LLM (Privileged LLM with tool access)
+    if settings.USE_BEDROCK:
+        # Production: Use Bedrock Claude Sonnet (powerful)
+        from src.integrations.aws.bedrock_llm import get_sonnet_llm
+        supervisor_llm = get_sonnet_llm(temperature=0.2, max_tokens=600)
+        logger.info("P-LLM Supervisor initialized with Bedrock Claude Sonnet")
+    else:
+        # Development: Use OpenAI GPT-4
+        supervisor_llm = ChatOpenAI(
+            api_key=telecorp_config.OPENAI_API_KEY,
+            model="gpt-4",
+            temperature=0.2,
+            max_tokens=600,
+        )
+        logger.info("P-LLM Supervisor initialized with OpenAI GPT-4")
+
+    supervisor_llm = supervisor_llm.bind_tools(telecorp_tools)
 
     client_already_identified = state.get("is_existing_client") is not None
 
