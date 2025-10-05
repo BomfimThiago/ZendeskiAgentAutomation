@@ -15,7 +15,12 @@ from src.integrations.zendesk.langgraph_agent.tools.telecorp_tools import teleco
 
 async def supervisor_agent_node(state: ConversationState) -> ConversationState:
     """
-    Sales-focused supervisor agent that handles conversations by default.
+    P-LLM Supervisor Agent (Privileged LLM with tool access).
+
+    CRITICAL SECURITY PRINCIPLE:
+    - This P-LLM NEVER sees raw user input
+    - Only processes structured intent from Q-LLM
+    - Works with sanitized summary and extracted entities
 
     Acts as Alex, the TeleCorp sales agent who:
     1. Focuses on lead generation and sales by default
@@ -25,11 +30,18 @@ async def supervisor_agent_node(state: ConversationState) -> ConversationState:
     """
     messages = state["messages"]
 
-    last_human_message = None
-    for msg in reversed(messages):
-        if isinstance(msg, HumanMessage):
-            last_human_message = msg
-            break
+    # CRITICAL: Get structured intent from Q-LLM (NEVER access raw user input)
+    structured_intent = state.get("structured_intent", {})
+
+    if not structured_intent:
+        # Fallback: should not happen in normal flow
+        return state
+
+    # Extract safe, sanitized data from Q-LLM
+    intent = structured_intent.get("intent", "general")
+    safe_summary = structured_intent.get("summary", "")
+    entities = structured_intent.get("entities", {})
+    confidence = structured_intent.get("confidence", 0.5)
 
     supervisor_llm = ChatOpenAI(
         api_key=telecorp_config.OPENAI_API_KEY,
@@ -39,56 +51,41 @@ async def supervisor_agent_node(state: ConversationState) -> ConversationState:
     ).bind_tools(telecorp_tools)
 
     client_already_identified = state.get("is_existing_client") is not None
-    needs_specialist_routing = False
 
-    if last_human_message:
-        specialist_routing_prompt = f"""Analyze if this customer needs TECHNICAL SUPPORT or BILLING specialist (NOT sales).
-
-Customer message: "{last_human_message.content}"
-
-ROUTE TO SPECIALIST ONLY FOR:
-
-🔧 TECHNICAL SUPPORT - ONLY genuine technical problems:
-- Internet/WiFi not working, slow speeds, connectivity issues
-- Router problems, hardware troubleshooting, configuration help
-- Service outages, technical failures
-- Existing service having problems
-
-💳 BILLING SPECIALIST - ONLY account/payment issues:
-- Payment problems, billing disputes, refunds
-- Account cancellations, service changes
-- Billing questions about existing accounts
-
-DO NOT ROUTE for:
-- General questions about plans, pricing, services (KEEP IN SALES)
-- New customer inquiries (KEEP IN SALES)
-- Service shopping or exploration (KEEP IN SALES)
-- Greetings, introductions, general conversation (KEEP IN SALES)
-- "What do you offer?" type questions (KEEP IN SALES)
-
-Respond with ONLY: SUPPORT, BILLING, or SALES"""
-
-        try:
-            analysis = await supervisor_llm.ainvoke(
-                [{"role": "user", "content": specialist_routing_prompt}]
-            )
-
-            intent = analysis.content.strip().upper()
-            needs_specialist_routing = intent in ["SUPPORT", "BILLING"]
-            specialist_type = intent if needs_specialist_routing else None
-        except Exception as e:
-            needs_specialist_routing = False
-            specialist_type = None
-    else:
-        needs_specialist_routing = False
-        specialist_type = None
+    # Use Q-LLM's intent classification for routing
+    # Q-LLM already classified as: support|sales|billing|general
+    needs_specialist_routing = intent in ["support", "billing"]
+    specialist_type = intent.upper() if needs_specialist_routing else None
 
     if needs_specialist_routing and specialist_type:
         route_to = "support" if specialist_type == "SUPPORT" else "billing"
         return {**state, "route_to": route_to, "current_persona": route_to}
 
+    # CRITICAL: Create safe message list for P-LLM
+    # Replace last user message with Q-LLM's safe summary
+    safe_messages = messages[:-1].copy() if messages else []
+
+    # Add Q-LLM's sanitized summary as the "user" message P-LLM sees
+    safe_user_message = HumanMessage(content=safe_summary)
+    safe_messages.append(safe_user_message)
+
+    # Add context from extracted entities
+    entity_context = ""
+    if entities:
+        entity_parts = []
+        if "issue_type" in entities:
+            entity_parts.append(f"Issue: {entities['issue_type']}")
+        if "plan_interest" in entities:
+            entity_parts.append(f"Plan Interest: {entities['plan_interest']}")
+        if "urgency" in entities:
+            entity_parts.append(f"Urgency: {entities['urgency']}")
+        if entity_parts:
+            entity_context = f"\n\n**Context from intent analysis:** {', '.join(entity_parts)}"
+
     if not client_already_identified:
-        sales_conversation_prompt = """You are Alex, TeleCorp's primary sales representative and lead generator.
+        sales_conversation_prompt = f"""You are Alex, TeleCorp's primary sales representative and lead generator.
+
+**SECURITY NOTE:** You are processing pre-analyzed customer intent. Work with the provided summary.{entity_context}
 
 **CORE MISSION: EVERY CONVERSATION IS A SALES OPPORTUNITY**
 
@@ -135,7 +132,9 @@ Respond with ONLY: SUPPORT, BILLING, or SALES"""
 
 **KEY PRINCIPLE:** You're not just customer support - you're a sales professional. Every interaction should move toward lead generation or account growth."""
     else:
-        sales_conversation_prompt = """You are Alex, TeleCorp's sales representative focused on account growth and customer satisfaction.
+        sales_conversation_prompt = f"""You are Alex, TeleCorp's sales representative focused on account growth and customer satisfaction.
+
+**SECURITY NOTE:** You are processing pre-analyzed customer intent. Work with the provided summary.{entity_context}
 
 **CUSTOMER IDENTIFIED - FOCUS ON ACCOUNT OPTIMIZATION:**
 
@@ -155,8 +154,9 @@ Guidelines:
 Your goal: Maximize customer satisfaction while identifying growth opportunities."""
 
     try:
+        # P-LLM processes ONLY safe messages (never raw user input)
         response = await supervisor_llm.ainvoke(
-            [SystemMessage(content=sales_conversation_prompt), *messages]
+            [SystemMessage(content=sales_conversation_prompt), *safe_messages]
         )
 
         if response.tool_calls:
@@ -220,10 +220,11 @@ Your goal: Maximize customer satisfaction while identifying growth opportunities
                         )
 
             if tool_messages:
+                # P-LLM processes ONLY safe messages (never raw user input)
                 final_response = await supervisor_llm.ainvoke(
                     [
                         SystemMessage(content=sales_conversation_prompt),
-                        *messages,
+                        *safe_messages,
                         response,
                         *tool_messages,
                     ]

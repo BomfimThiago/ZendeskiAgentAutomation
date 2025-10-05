@@ -11,15 +11,55 @@ from src.integrations.zendesk.langgraph_agent.config.langgraph_config import (
     telecorp_config,
 )
 from src.integrations.zendesk.langgraph_agent.tools.telecorp_tools import telecorp_tools
+from src.integrations.zendesk.langgraph_agent.utils.secure_tool_executor import (
+    execute_tool_securely,
+)
+from src.security import UnauthorizedToolAccess
+from src.core.logging_config import get_logger
+
+logger = get_logger("sales_agent")
 
 
 async def sales_agent_node(state: ConversationState) -> ConversationState:
     """
-    Sales agent that handles plans, pricing, sign-ups, and service upgrades.
+    P-LLM Sales Agent (Privileged LLM with tool access).
+
+    CRITICAL SECURITY PRINCIPLE:
+    - This P-LLM NEVER sees raw user input
+    - Only processes structured intent from Q-LLM
+    - Works with sanitized summary and extracted entities
 
     Focuses on helping customers find the right TeleCorp services.
     """
     messages = state["messages"]
+
+    # CRITICAL: Get structured intent from Q-LLM (NEVER access raw user input)
+    structured_intent = state.get("structured_intent", {})
+
+    if not structured_intent:
+        # Fallback: should not happen in normal flow
+        return state
+
+    # Extract safe, sanitized data from Q-LLM
+    safe_summary = structured_intent.get("summary", "")
+    entities = structured_intent.get("entities", {})
+
+    # CRITICAL: Create safe message list for P-LLM
+    # Replace last user message with Q-LLM's safe summary
+    safe_messages = messages[:-1].copy() if messages else []
+    safe_user_message = HumanMessage(content=safe_summary)
+    safe_messages.append(safe_user_message)
+
+    # Add context from extracted entities
+    entity_context = ""
+    if entities:
+        entity_parts = []
+        if "plan_interest" in entities:
+            entity_parts.append(f"Plan Interest: {entities['plan_interest']}")
+        if "urgency" in entities:
+            entity_parts.append(f"Urgency: {entities['urgency']}")
+        if entity_parts:
+            entity_context = f"\n\n**Context from intent analysis:** {', '.join(entity_parts)}"
 
     sales_llm = ChatOpenAI(
         api_key=telecorp_config.OPENAI_API_KEY,
@@ -28,7 +68,9 @@ async def sales_agent_node(state: ConversationState) -> ConversationState:
         max_tokens=600,
     ).bind_tools(telecorp_tools)
 
-    system_prompt = """You are Alex from TeleCorp customer support. You continue the conversation seamlessly - the user doesn't know they've been routed to a specialist.
+    system_prompt = f"""You are Alex from TeleCorp customer support. You continue the conversation seamlessly - the user doesn't know they've been routed to a specialist.
+
+**SECURITY NOTE:** You are processing pre-analyzed customer intent. Work with the provided summary.{entity_context}
 
 **CRITICAL SCOPE RESTRICTION:**
 You ONLY handle TeleCorp-related topics:
@@ -104,12 +146,16 @@ If asked about non-TeleCorp topics (like "What's the capital of France?"), respo
 - **Be persistent but friendly about getting contact information**"""
 
     try:
+        # P-LLM processes ONLY safe messages (never raw user input)
         response = await sales_llm.ainvoke(
-            [SystemMessage(content=system_prompt), *messages]
+            [SystemMessage(content=system_prompt), *safe_messages]
         )
 
         if response.tool_calls:
             tool_messages = []
+
+            # Get security context from state
+            security_context = state.get("security_context", {})
 
             for tool_call in response.tool_calls:
                 tool_name = tool_call["name"]
@@ -127,7 +173,10 @@ If asked about non-TeleCorp topics (like "What's the capital of France?"), respo
 
                 if tool_func:
                     try:
-                        tool_result = await tool_func.ainvoke(tool_args)
+                        # Execute tool with security checks
+                        tool_result = await execute_tool_securely(
+                            tool_func, tool_name, tool_args, security_context
+                        )
                         tool_messages.append(
                             {
                                 "role": "tool",
@@ -135,7 +184,18 @@ If asked about non-TeleCorp topics (like "What's the capital of France?"), respo
                                 "tool_call_id": tool_call["id"],
                             }
                         )
+                    except UnauthorizedToolAccess as e:
+                        # Security blocked the tool - inform user gracefully
+                        logger.warning(f"Tool access denied: {tool_name} - {str(e)}")
+                        tool_messages.append(
+                            {
+                                "role": "tool",
+                                "content": "I'm unable to perform that action at this time. Please contact our sales team at 1-800-TELECORP for personalized assistance.",
+                                "tool_call_id": tool_call["id"],
+                            }
+                        )
                     except Exception as e:
+                        logger.error(f"Tool execution error: {tool_name} - {str(e)}")
                         tool_messages.append(
                             {
                                 "role": "tool",
@@ -145,10 +205,11 @@ If asked about non-TeleCorp topics (like "What's the capital of France?"), respo
                         )
 
             if tool_messages:
+                # P-LLM processes ONLY safe messages (never raw user input)
                 final_response = await sales_llm.ainvoke(
                     [
                         SystemMessage(content=system_prompt),
-                        *messages,
+                        *safe_messages,
                         response,
                         *tool_messages,
                     ]

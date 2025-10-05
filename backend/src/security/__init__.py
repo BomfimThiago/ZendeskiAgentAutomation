@@ -29,29 +29,41 @@ from .guardrails import (
     ValidationResult
 )
 
+# Capabilities (Phase 2)
+from .capabilities import (
+    require_capability,
+    check_tool_access,
+    TOOL_SENSITIVITY,
+)
+
 __all__ = [
     # Core
     "TrustLevel",
     "DataProvenance",
     "SecurityContext",
-    
+
     # Exceptions
     "SecurityError",
     "PromptInjectionDetected",
     "DataExfiltrationAttempt",
     "UnauthorizedToolAccess",
     "QuarantineRequired",
-    
+
     # Config
     "SecurityConfig",
     "security_config",
-    
+
     # Guardrails
     "OutputSanitizer",
     "PatternDetector",
     "AttackType",
     "InputValidator",
     "ValidationResult",
+
+    # Capabilities
+    "require_capability",
+    "check_tool_access",
+    "TOOL_SENSITIVITY",
 ]
 
 __version__ = "1.0.0"

@@ -25,3 +25,7 @@ class ConversationState(TypedDict):
     trust_level: Optional[str]  # TRUSTED, VERIFIED, UNTRUSTED, QUARANTINED
     trust_score: Optional[float]  # 0.0 to 1.0
     security_context: Optional[Dict[str, Any]]  # Full security context from validator
+
+    # Dual-LLM Architecture: Structured intent from Q-LLM
+    # P-LLM NEVER sees raw user input, only this structured data
+    structured_intent: Optional[Dict[str, Any]]  # Output from Q-LLM intent extraction

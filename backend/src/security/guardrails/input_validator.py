@@ -4,7 +4,7 @@ Multi-layer input validation for LLM applications.
 Combines pattern detection, heuristics, and optional semantic analysis
 to validate user input before processing.
 """
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union
 from datetime import datetime
 
 from .pattern_detector import PatternDetector, AttackType
@@ -15,6 +15,13 @@ from ..exceptions import PromptInjectionDetected, QuarantineRequired
 from src.core.logging_config import get_logger
 
 logger = get_logger("input_validator")
+
+
+def _get_trust_level_str(trust_level: Union[TrustLevel, str]) -> str:
+    """Safely get string value from TrustLevel enum or string."""
+    if hasattr(trust_level, 'value'):
+        return trust_level.value
+    return str(trust_level)
 
 
 class ValidationResult:
@@ -127,10 +134,11 @@ class InputValidator:
             ValidationResult with trust level and recommendations
         """
         # Create security context
+        # Start with UNTRUSTED (conservative), will be upgraded based on validation
         context = SecurityContext(
             user_id=user_id,
             session_id=session_id,
-            trust_level=TrustLevel.UNTRUSTED,
+            trust_level=TrustLevel.UNTRUSTED,  # Will be updated after validation
             metadata=metadata or {}
         )
         
@@ -170,21 +178,43 @@ class InputValidator:
             attack_types = ', '.join([at.value for at in pattern_result['all_attack_types']])
             block_reason = f"High-confidence prompt injection detected: {attack_types}"
         
-        # Update security context
+        # Update security context with calculated trust level and metadata
+        # CRITICAL: Update the actual trust_level field, not just metadata
+        initial_trust = context.trust_level
+
+        # Update with trust level and metadata
+        context = context.model_copy(update={
+            "trust_level": trust_level,
+            "metadata": {
+                "trust_score": trust_score,
+                "pattern_confidence": pattern_result.get('confidence', 0.0),
+                "is_attack": pattern_result.get('is_attack', False),
+                "attack_type": pattern_result.get('attack_type', 'none'),
+                "requires_quarantine": requires_quarantine,
+                "quarantine_reasons": quarantine_reasons,
+            }
+        })
+
         context = context.add_security_flag(
             "validation_complete",
-            {"trust_score": trust_score, "trust_level": trust_level.value}
+            {"trust_score": trust_score, "trust_level": _get_trust_level_str(trust_level)}
         )
-        
+
         if is_blocked:
             context = context.block_operation(block_reason)
-        
-        # Log validation
+
+        # Log validation with trust level changes
+        # Handle both enum and string values (Pydantic may convert to string)
+        initial_trust_str = initial_trust.value if hasattr(initial_trust, 'value') else str(initial_trust)
+        final_trust_str = trust_level.value if hasattr(trust_level, 'value') else str(trust_level)
+
         logger.info(
             "Input validation complete",
             extra={
+                'initial_trust': initial_trust_str,
+                'final_trust': final_trust_str,
+                'trust_upgraded': initial_trust != trust_level,
                 'trust_score': trust_score,
-                'trust_level': trust_level.value,
                 'is_blocked': is_blocked,
                 'requires_quarantine': requires_quarantine,
                 'user_id': user_id
