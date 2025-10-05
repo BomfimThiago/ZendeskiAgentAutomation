@@ -75,3 +75,15 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "log_retention_days" {
+  description = "CloudWatch Logs retention in days"
+  type        = number
+  default     = 7
+}
+
+variable "cors_origins" {
+  description = "CORS allowed origins for API Gateway"
+  type        = list(string)
+  default     = ["*"]
+}

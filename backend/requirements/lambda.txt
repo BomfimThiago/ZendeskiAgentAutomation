@@ -1,0 +1,56 @@
+# Lambda-specific requirements for AWS deployment
+# This file includes all production dependencies plus AWS-specific packages
+
+# Base FastAPI and web framework
+fastapi>=0.104.0
+pydantic>=2.4.0
+pydantic-settings>=2.0.0
+httpx>=0.25.0
+
+# Lambda adapter (FastAPI to API Gateway)
+mangum>=0.17.0
+
+# AWS SDK for Python (boto3 is provided by Lambda, but specify version)
+# boto3 and botocore are included in Lambda runtime, but we specify for completeness
+boto3>=1.28.0
+botocore>=1.31.0
+
+# LangChain and AI dependencies
+langchain>=0.2.0
+langchain-openai>=0.1.0
+langchain-community>=0.2.0
+langchain-text-splitters>=0.2.0
+langchain-core>=0.2.0
+langgraph>=0.0.1
+
+# OpenAI (for development/fallback)
+openai>=1.35.0
+tiktoken>=0.7.0
+
+# LangSmith (optional tracing)
+langsmith>=0.1.0
+
+# Vector store and embeddings (if needed in Lambda)
+# chromadb>=0.4.0  # EXCLUDED: Too large for Lambda, use external vector DB
+# sentence-transformers>=2.7.0  # EXCLUDED: Too large for Lambda
+
+# Document processing (if needed in Lambda)
+# pypdf>=4.0.0  # EXCLUDED: Include only if document processing is needed
+# python-docx>=1.1.0  # EXCLUDED: Include only if document processing is needed
+
+# Python standard library enhancements
+python-dateutil>=2.8.0
+python-json-logger>=2.0.0
+
+# IMPORTANT NOTES:
+# 1. Lambda has a 250MB deployment package limit (uncompressed)
+# 2. Lambda has a 50MB deployment package limit (compressed)
+# 3. Exclude heavy dependencies (chromadb, sentence-transformers, etc.)
+# 4. Use Lambda Layers for large dependencies if needed
+# 5. boto3 is pre-installed in Lambda runtime (no need to package)
+
+# Optimization tips:
+# - Use --platform manylinux2014_x86_64 when installing for Linux Lambda
+# - Exclude dev dependencies (pytest, black, etc.)
+# - Exclude .pyc files and __pycache__ directories
+# - Use Lambda Layers for common dependencies across multiple functions

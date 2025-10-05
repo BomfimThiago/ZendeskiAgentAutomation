@@ -63,30 +63,61 @@ output "environment_variables" {
   }
 }
 
+# Lambda Function Outputs
+output "lambda_function_name" {
+  description = "Lambda function name"
+  value       = aws_lambda_function.telecorp_api.function_name
+}
+
+output "lambda_function_arn" {
+  description = "Lambda function ARN"
+  value       = aws_lambda_function.telecorp_api.arn
+}
+
+output "lambda_role_arn" {
+  description = "Lambda IAM role ARN"
+  value       = aws_iam_role.lambda_role.arn
+}
+
+# API Gateway Outputs
+output "api_gateway_url" {
+  description = "API Gateway invoke URL"
+  value       = aws_apigatewayv2_stage.default.invoke_url
+}
+
+output "api_gateway_id" {
+  description = "API Gateway ID"
+  value       = aws_apigatewayv2_api.telecorp_api.id
+}
+
 output "next_steps" {
   description = "Next steps after Terraform deployment"
   value = <<-EOT
 
   ✅ Infrastructure deployed successfully!
 
-  📋 Next Steps:
+  📋 Deployment Steps:
+
   1. Request Bedrock model access:
-     - Go to: https://console.aws.amazon.com/bedrock
-     - Navigate to: Model access
-     - Request access to:
-       • Anthropic Claude 3 Haiku
-       • Anthropic Claude 3.5 Sonnet
+     https://console.aws.amazon.com/bedrock/home?region=${var.aws_region}#/modelaccess
+     - Enable: Claude 3 Haiku
+     - Enable: Claude 3.5 Sonnet
 
-  2. Verify Bedrock access:
-     aws bedrock list-foundation-models --region ${var.aws_region} | grep claude
+  2. Deploy Lambda Function:
+     cd backend
+     ./scripts/deploy-lambda.sh
 
-  3. Continue to Phase 2: Bedrock Integration
-     - Create BedrockChatModel wrapper
-     - Update agent nodes
+  3. Test API:
+     curl ${aws_apigatewayv2_stage.default.invoke_url}/health
 
-  4. Test the infrastructure:
-     - Run unit tests
-     - Deploy Lambda function
+  🌐 API Endpoints:
+     Base URL: ${aws_apigatewayv2_stage.default.invoke_url}
+     Health:   ${aws_apigatewayv2_stage.default.invoke_url}/health
+     API Docs: ${aws_apigatewayv2_stage.default.invoke_url}/docs
+
+  📊 Monitor Logs:
+     Lambda:      aws logs tail /aws/lambda/${aws_lambda_function.telecorp_api.function_name} --follow
+     API Gateway: aws logs tail /aws/apigateway/${var.project_name} --follow
 
   💰 Estimated Monthly Cost: $25-40 (for 10k requests)
 
