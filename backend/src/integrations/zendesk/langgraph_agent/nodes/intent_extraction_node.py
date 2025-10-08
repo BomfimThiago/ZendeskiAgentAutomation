@@ -113,19 +113,18 @@ User: "What plans do you offer for 100Mbps internet?"
 
 
 class IntentExtractor:
-    """Q-LLM intent extractor (no tool access) with DynamoDB caching."""
+    """Q-LLM intent extractor (no tool access)."""
 
     def __init__(self):
         # Use fast, cheap model for intent extraction (Q-LLM)
         if settings.USE_BEDROCK:
             # Production: Use Bedrock Claude Haiku (fast, cheap)
             from src.integrations.aws.bedrock_llm import get_haiku_llm
-            from src.integrations.aws.intent_cache import get_intent_cache
             self.q_llm = get_haiku_llm(temperature=0.0, max_tokens=300)
-            self.cache = get_intent_cache()
-            logger.info("Q-LLM initialized with Bedrock Claude Haiku + DynamoDB cache")
+            self.cache = None
+            logger.info("Q-LLM initialized with Bedrock Claude Haiku")
         else:
-            # Development: Use OpenAI GPT-3.5 (no cache for dev)
+            # Development: Use OpenAI GPT-3.5
             from langchain_openai import ChatOpenAI
             from src.integrations.zendesk.langgraph_agent.config.langgraph_config import awesome_company_config
             self.q_llm = ChatOpenAI(
@@ -134,7 +133,7 @@ class IntentExtractor:
                 temperature=0.0,
                 max_tokens=300,
             )
-            self.cache = None  # No cache in dev mode
+            self.cache = None
             logger.info("Q-LLM initialized with OpenAI GPT-3.5")
 
     async def extract_intent(
@@ -143,15 +142,10 @@ class IntentExtractor:
         conversation_context: str = ""
     ) -> StructuredIntent:
         """
-        Extract structured intent from user message using Q-LLM with caching.
+        Extract structured intent from user message using Q-LLM.
 
         This is the ONLY place where raw user input is processed by an LLM.
         P-LLM will NEVER see this raw input.
-
-        Performance optimization:
-        - Checks DynamoDB cache first (saves ~30-40% of LLM calls)
-        - Only calls Q-LLM on cache miss
-        - Caches result for future identical queries
 
         Args:
             user_message: Raw user input (potentially malicious)

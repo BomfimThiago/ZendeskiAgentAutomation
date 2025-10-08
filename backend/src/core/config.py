@@ -23,11 +23,6 @@ class Settings(BaseSettings):
     BEDROCK_Q_LLM_MODEL: str = "anthropic.claude-3-haiku-20240307-v1:0"
     BEDROCK_P_LLM_MODEL: str = "anthropic.claude-3-5-sonnet-20240620-v1:0"
 
-    # DynamoDB Configuration (REQUIRED for production)
-    DYNAMO_TABLE_CONVERSATIONS: str = "telecorp-conversations"
-    DYNAMO_TABLE_INTENT_CACHE: str = "telecorp-intent-cache"
-    DYNAMO_TABLE_SESSIONS: str = "telecorp-sessions"
-
     # LangSmith Configuration (OPTIONAL) - supporting both old and new variable names
     LANGCHAIN_TRACING_V2: bool = False
     LANGCHAIN_API_KEY: str = ""

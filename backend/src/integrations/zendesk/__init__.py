@@ -2,7 +2,7 @@
 Zendesk integration module.
 
 This module provides essential Zendesk API integration including
-client, configuration, models, and FastAPI endpoints for ticket operations.
+client, configuration, models, and chat AI agent.
 """
 from .client import ZendeskClient, ZendeskPaginator, get_zendesk_client
 from .config import zendesk_config
@@ -11,7 +11,6 @@ from .models import (
     ZendeskResponse,
     PaginatedTicketsResponse
 )
-from .router import router as zendesk_router
 from .chat_router import router as chat_router
 from .service import TicketService
 from .exceptions_api import (
@@ -32,7 +31,6 @@ __all__ = [
     "ZendeskTicket",
     "ZendeskResponse",
     "PaginatedTicketsResponse",
-    "zendesk_router",
     "chat_router",
     "TicketService",
     "ZendeskServiceUnavailableException",

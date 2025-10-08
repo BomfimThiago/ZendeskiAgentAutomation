@@ -113,15 +113,12 @@ class BedrockChatModel(BaseChatModel):
                 body=json.dumps(body)
             )
 
-            # Parse response
             response_body = json.loads(response['body'].read())
 
-            # Extract text from response
             content = response_body['content'][0]['text']
 
             logger.debug(f"Bedrock response received: {len(content)} chars")
 
-            # Return in LangChain format
             message = AIMessage(content=content)
             generation = ChatGeneration(message=message)
             return ChatResult(generations=[generation])
