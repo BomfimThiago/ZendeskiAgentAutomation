@@ -68,7 +68,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
         # Configure with thread ID for memory persistence
         config = {"configurable": {"thread_id": session_id}}
 
-        # Invoke the graph with user message
+        # Use async invoke since graph nodes are async
         result = await telecorp_graph.ainvoke(
             {"messages": [HumanMessage(content=request.message)]},
             config
@@ -108,14 +108,12 @@ async def chat(request: ChatRequest) -> ChatResponse:
         )
 
     except Exception as e:
-        log_with_context(
-            logger,
-            40,  # ERROR
-            "Error processing chat message",
-            session_id=session_id,
-            error=str(e)
+        logger.error(
+            f"Error processing chat message: {type(e).__name__}: {str(e)}",
+            exc_info=True,
+            extra={"session_id": session_id}
         )
-        raise ChatProcessingException(detail=f"Error processing chat message: {str(e)}")
+        raise ChatProcessingException(detail=f"Error processing chat message: {type(e).__name__}: {str(e)}")
 
 
 @router.get(

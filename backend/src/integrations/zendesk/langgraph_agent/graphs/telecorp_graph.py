@@ -168,16 +168,12 @@ def create_telecorp_graph():
     graph.add_edge("billing_agent", "output_sanitization")
     graph.add_edge("output_sanitization", END)
 
-    # Use DynamoDB checkpointer for production, MemorySaver for dev
-    if settings.USE_BEDROCK:
-        from src.integrations.aws.dynamodb_checkpointer import get_dynamodb_checkpointer
-        checkpointer = get_dynamodb_checkpointer()
-        logger = logging.getLogger("telecorp_graph")
-        logger.info("Using DynamoDB checkpointer for production state persistence")
-    else:
-        checkpointer = MemorySaver()
-        logger = logging.getLogger("telecorp_graph")
-        logger.info("Using MemorySaver checkpointer for development")
+    # Use MemorySaver for in-memory conversation history
+    # Note: Conversation history is lost on container restart
+    # For persistent history across restarts, implement async DynamoDB checkpointer
+    checkpointer = MemorySaver()
+    logger = logging.getLogger("telecorp_graph")
+    logger.info("Using MemorySaver checkpointer (in-memory conversation history)")
 
     compiled_graph = graph.compile(checkpointer=checkpointer)
 
