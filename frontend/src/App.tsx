@@ -96,7 +96,7 @@ function App() {
   return (
     <div className="App">
       <header className="app-header">
-        <h1>🔵 TeleCorp Customer Support</h1>
+        <h1>🔵 MyAwesomeFakeCompany Customer Support</h1>
         <div className="connection-status">
           {isConnected ? (
             <span className="status-connected">● Connected</span>
@@ -140,7 +140,7 @@ function App() {
 
       <footer className="app-footer">
         <p>Session ID: {sessionId || 'Not connected'}</p>
-        <p>Powered by TeleCorp AI Assistant</p>
+        <p>Powered by MyAwesomeFakeCompany AI Assistant</p>
       </footer>
     </div>
   );

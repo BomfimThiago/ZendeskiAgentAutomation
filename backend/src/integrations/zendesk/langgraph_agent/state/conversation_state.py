@@ -7,7 +7,7 @@ from langchain_core.messages import BaseMessage
 
 
 class ConversationState(TypedDict):
-    """State object for TeleCorp customer support workflow."""
+    """State object for MyAwesomeFakeCompany customer support workflow."""
 
     messages: Annotated[list[BaseMessage], add_messages]
 

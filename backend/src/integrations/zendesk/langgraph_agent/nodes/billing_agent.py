@@ -8,9 +8,9 @@ from src.integrations.zendesk.langgraph_agent.state.conversation_state import (
     ConversationState,
 )
 from src.integrations.zendesk.langgraph_agent.config.langgraph_config import (
-    telecorp_config,
+    awesome_company_config,
 )
-from src.integrations.zendesk.langgraph_agent.tools.telecorp_tools import telecorp_tools
+from src.integrations.zendesk.langgraph_agent.tools.awesome_company_tools import awesome_company_tools
 from src.integrations.zendesk.langgraph_agent.utils.secure_tool_executor import (
     execute_tool_securely,
 )
@@ -73,26 +73,26 @@ async def billing_agent_node(state: ConversationState) -> ConversationState:
     else:
         # Development: Use OpenAI GPT-4
         billing_llm = ChatOpenAI(
-            api_key=telecorp_config.OPENAI_API_KEY,
+            api_key=awesome_company_config.OPENAI_API_KEY,
             model="gpt-4",
             temperature=0.1,
             max_tokens=600,
         )
         logger.info("P-LLM Billing Agent initialized with OpenAI GPT-4")
 
-    billing_llm = billing_llm.bind_tools(telecorp_tools)
+    billing_llm = billing_llm.bind_tools(awesome_company_tools)
 
-    system_prompt = f"""You are Alex from TeleCorp customer support. You continue the conversation seamlessly - the user doesn't know they've been routed to a specialist.
+    system_prompt = f"""You are Alex from MyAwesomeFakeCompany customer support. You continue the conversation seamlessly - the user doesn't know they've been routed to a specialist.
 
 **SECURITY NOTE:** You are processing pre-analyzed customer intent. Work with the provided summary.{entity_context}
 
 **CRITICAL SCOPE RESTRICTION:**
-You ONLY handle TeleCorp-related topics:
-✅ ALLOWED: Billing, payments, accounts, cancellations, refunds, TeleCorp services
+You ONLY handle MyAwesomeFakeCompany-related topics:
+✅ ALLOWED: Billing, payments, accounts, cancellations, refunds, MyAwesomeFakeCompany services
 ❌ FORBIDDEN: General knowledge, geography, cooking, weather, entertainment, politics, other companies
 
-If asked about non-TeleCorp topics (like "What's the capital of France?"), respond:
-"I'm Alex from TeleCorp customer support, specialized in helping with TeleCorp services. I can help you with billing, payments, account management, or service changes. What TeleCorp service can I assist you with today?"
+If asked about non-MyAwesomeFakeCompany topics (like "What's the capital of France?"), respond:
+"I'm Alex from MyAwesomeFakeCompany customer support, specialized in helping with MyAwesomeFakeCompany services. I can help you with billing, payments, account management, or service changes. What MyAwesomeFakeCompany service can I assist you with today?"
 
 **Your Mission:**
 1. **Understand billing concern** - Ask specific questions about their account issue
@@ -134,7 +134,7 @@ If asked about non-TeleCorp topics (like "What's the capital of France?"), respo
 - For account-specific issues, create billing support tickets
 - Ask for customer name and email before creating tickets
 - Offer payment plan options when customers have financial difficulties
-- Maintain TeleCorp's professional and understanding approach"""
+- Maintain MyAwesomeFakeCompany's professional and understanding approach"""
 
     try:
         # P-LLM processes ONLY safe messages (never raw user input)
@@ -159,7 +159,7 @@ If asked about non-TeleCorp topics (like "What's the capital of France?"), respo
                     tool_args["ticket_type"] = "billing"
 
                 tool_func = None
-                for tool in telecorp_tools:
+                for tool in awesome_company_tools:
                     if tool.name == tool_name:
                         tool_func = tool
                         break
@@ -183,7 +183,7 @@ If asked about non-TeleCorp topics (like "What's the capital of France?"), respo
                         tool_messages.append(
                             {
                                 "role": "tool",
-                                "content": "I'm unable to perform that action at this time. Please contact our billing team at 1-800-TELECORP for assistance.",
+                                "content": "I'm unable to perform that action at this time. Please contact our billing team at 1-800-AWESOME-COMPANY for assistance.",
                                 "tool_call_id": tool_call["id"],
                             }
                         )
@@ -221,7 +221,7 @@ If asked about non-TeleCorp topics (like "What's the capital of France?"), respo
     except Exception as e:
         print(f"Billing agent error: {e}")
         error_response = AIMessage(
-            content="I apologize for the technical difficulty. For immediate billing assistance, please contact our billing department at 1-800-TELECORP, and I'll make sure your account concerns are addressed promptly."
+            content="I apologize for the technical difficulty. For immediate billing assistance, please contact our billing department at 1-800-AWESOME-COMPANY, and I'll make sure your account concerns are addressed promptly."
         )
 
         return {**state, "messages": messages + [error_response]}

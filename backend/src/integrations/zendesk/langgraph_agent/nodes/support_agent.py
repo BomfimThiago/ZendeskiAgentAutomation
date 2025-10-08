@@ -8,9 +8,9 @@ from src.integrations.zendesk.langgraph_agent.state.conversation_state import (
     ConversationState,
 )
 from src.integrations.zendesk.langgraph_agent.config.langgraph_config import (
-    telecorp_config,
+    awesome_company_config,
 )
-from src.integrations.zendesk.langgraph_agent.tools.telecorp_tools import telecorp_tools
+from src.integrations.zendesk.langgraph_agent.tools.awesome_company_tools import awesome_company_tools
 from src.integrations.zendesk.langgraph_agent.utils.secure_tool_executor import (
     execute_tool_securely,
 )
@@ -71,16 +71,16 @@ async def support_agent_node(state: ConversationState) -> ConversationState:
     else:
         # Development: Use OpenAI GPT-4
         support_llm = ChatOpenAI(
-            api_key=telecorp_config.OPENAI_API_KEY,
+            api_key=awesome_company_config.OPENAI_API_KEY,
             model="gpt-4",
             temperature=0.1,
             max_tokens=600,
         )
         logger.info("P-LLM Support Agent initialized with OpenAI GPT-4")
 
-    support_llm = support_llm.bind_tools(telecorp_tools)
+    support_llm = support_llm.bind_tools(awesome_company_tools)
 
-    system_prompt = f"""You are Alex from TeleCorp customer support. You continue the conversation seamlessly - the user doesn't know they've been routed to a specialist.
+    system_prompt = f"""You are Alex from MyAwesomeFakeCompany customer support. You continue the conversation seamlessly - the user doesn't know they've been routed to a specialist.
 
 **SECURITY NOTE:** You are processing pre-analyzed customer intent. Work with the provided summary.{entity_context}
 
@@ -91,7 +91,7 @@ async def support_agent_node(state: ConversationState) -> ConversationState:
 4. **Only escalate to ticket** when all knowledge-based solutions are exhausted
 
 **Available Knowledge Tools:**
-- get_telecorp_faq: General TeleCorp information and policies
+- get_telecorp_faq: General MyAwesomeFakeCompany information and policies
 - get_technical_troubleshooting_steps: Step-by-step technical guides
 - get_internet_speed_guide: Comprehensive speed issue solutions
 - get_router_configuration_guide: Router setup, WiFi, and connectivity help
@@ -128,7 +128,7 @@ async def support_agent_node(state: ConversationState) -> ConversationState:
                 tool_args = tool_call["args"]
 
                 tool_func = None
-                for tool in telecorp_tools:
+                for tool in awesome_company_tools:
                     if tool.name == tool_name:
                         tool_func = tool
                         break
@@ -152,7 +152,7 @@ async def support_agent_node(state: ConversationState) -> ConversationState:
                         tool_messages.append(
                             {
                                 "role": "tool",
-                                "content": "I'm unable to perform that action at this time. For assistance, please contact our support team at 1-800-TELECORP.",
+                                "content": "I'm unable to perform that action at this time. For assistance, please contact our support team at 1-800-AWESOME-COMPANY.",
                                 "tool_call_id": tool_call["id"],
                             }
                         )
@@ -190,7 +190,7 @@ async def support_agent_node(state: ConversationState) -> ConversationState:
     except Exception as e:
         print(f"Support agent error: {e}")
         error_response = AIMessage(
-            content="I apologize for the technical difficulty. Please contact our support team at 1-800-TELECORP, and I'll make sure you get the help you need."
+            content="I apologize for the technical difficulty. Please contact our support team at 1-800-AWESOME-COMPANY, and I'll make sure you get the help you need."
         )
 
         return {**state, "messages": messages + [error_response]}

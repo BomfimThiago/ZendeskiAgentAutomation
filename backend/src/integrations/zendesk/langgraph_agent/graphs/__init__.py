@@ -1,5 +1,5 @@
-"""LangGraph workflow definitions for TeleCorp customer support."""
+"""LangGraph workflow definitions for MyAwesomeFakeCompany customer support."""
 
-from .telecorp_graph import create_telecorp_graph
+from .awesome_company_graph import create_awesome_company_graph
 
-__all__ = ["create_telecorp_graph"]
+__all__ = ["create_awesome_company_graph"]

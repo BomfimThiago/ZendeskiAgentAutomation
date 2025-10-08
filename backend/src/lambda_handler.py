@@ -1,5 +1,5 @@
 """
-AWS Lambda Handler for TeleCorp Customer Support API
+AWS Lambda Handler for MyAwesomeFakeCompany Customer Support API
 
 This module wraps the FastAPI application with Mangum adapter to enable
 serverless deployment on AWS Lambda + API Gateway.

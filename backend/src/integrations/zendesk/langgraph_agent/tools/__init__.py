@@ -1,5 +1,5 @@
-"""Tools for TeleCorp LangGraph Agent."""
+"""Tools for MyAwesomeFakeCompany LangGraph Agent."""
 
-from .telecorp_tools import telecorp_tools
+from .awesome_company_tools import awesome_company_tools
 
-__all__ = ["telecorp_tools"]
+__all__ = ["awesome_company_tools"]

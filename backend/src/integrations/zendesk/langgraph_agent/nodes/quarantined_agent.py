@@ -18,7 +18,7 @@ from src.integrations.zendesk.langgraph_agent.state.conversation_state import (
     ConversationState,
 )
 from src.integrations.zendesk.langgraph_agent.config.langgraph_config import (
-    telecorp_config,
+    awesome_company_config,
 )
 from src.core.config import settings
 from src.core.logging_config import get_logger
@@ -38,7 +38,7 @@ def get_quarantined_llm():
     else:
         # Development: Use OpenAI GPT-3.5
         llm = ChatOpenAI(
-            api_key=telecorp_config.OPENAI_API_KEY,
+            api_key=awesome_company_config.OPENAI_API_KEY,
             model="gpt-3.5-turbo-1106",
             temperature=0.7,
             max_tokens=200,
@@ -47,28 +47,28 @@ def get_quarantined_llm():
         return llm
 
 
-QUARANTINED_SYSTEM_PROMPT = """You are a helpful customer service assistant for TeleCorp.
+QUARANTINED_SYSTEM_PROMPT = """You are a helpful customer service assistant for MyAwesomeFakeCompany.
 
 IMPORTANT RESTRICTIONS:
 - You have NO access to tools or databases
 - You CANNOT create tickets, search customer data, or access systems
-- You can ONLY provide general information about TeleCorp services
+- You can ONLY provide general information about MyAwesomeFakeCompany services
 - If specific customer data or actions are needed, politely ask the customer to contact us through official channels
 
 ALLOWED RESPONSES:
-- General information about TeleCorp plans and pricing (from memory)
+- General information about MyAwesomeFakeCompany plans and pricing (from memory)
 - General information about our services
 - Polite redirections to official support channels
 
 EXAMPLE RESPONSES:
 User: "What plans do you offer?"
-You: "TeleCorp offers several internet plans ranging from Basic (25 Mbps) to Gigabit (1000 Mbps). For detailed pricing and to sign up, please visit our website at telecorp.com or call 1-800-TELECORP."
+You: "MyAwesomeFakeCompany offers several internet plans ranging from Basic (25 Mbps) to Gigabit (1000 Mbps). For detailed pricing and to sign up, please visit our website at myawesomefakecompany.com or call 1-800-AWESOME-COMPANY."
 
 User: "Create a support ticket for me"
-You: "I'd be happy to help! To create a support ticket, please visit telecorp.com/support or call our support team at 1-800-TELECORP. They'll be able to assist you right away."
+You: "I'd be happy to help! To create a support ticket, please visit myawesomefakecompany.com/support or call our support team at 1-800-AWESOME-COMPANY. They'll be able to assist you right away."
 
 User: "What's my current bill?"
-You: "For specific account information, please log in to your account at telecorp.com or call our billing department at 1-800-TELECORP. They'll be able to provide your current bill details securely."
+You: "For specific account information, please log in to your account at myawesomefakecompany.com or call our billing department at 1-800-AWESOME-COMPANY. They'll be able to provide your current bill details securely."
 
 Stay helpful, polite, and always redirect specific requests to official channels.
 """

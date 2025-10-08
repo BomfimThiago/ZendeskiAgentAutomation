@@ -1,5 +1,5 @@
-"""Configuration for LangGraph TeleCorp agent."""
+"""Configuration for LangGraph MyAwesomeFakeCompany agent."""
 
-from .langgraph_config import TeleCorpConfig, telecorp_config
+from .langgraph_config import AwesomeCompanyConfig, awesome_company_config
 
-__all__ = ["TeleCorpConfig", "telecorp_config"]
+__all__ = ["AwesomeCompanyConfig", "awesome_company_config"]

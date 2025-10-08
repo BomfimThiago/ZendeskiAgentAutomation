@@ -1,5 +1,5 @@
 """
-FastAPI router for chat operations with the TeleCorp AI agent.
+FastAPI router for chat operations with the MyAwesomeFakeCompany AI agent.
 """
 import uuid
 from fastapi import APIRouter, status
@@ -12,21 +12,21 @@ from .chat_exceptions import (
     ChatGraphNotInitializedException,
     ChatProcessingException
 )
-from .langgraph_agent.graphs.telecorp_graph import create_telecorp_graph
+from .langgraph_agent.graphs.awesome_company_graph import create_awesome_company_graph
 
 router = APIRouter(tags=["Chat"])
 logger = get_logger("chat_router")
 
 # Initialize the LangGraph graph
-telecorp_graph = None
+awesome_company_graph = None
 try:
-    telecorp_graph = create_telecorp_graph()
-    log_with_context(logger, 20, "TeleCorp chat graph initialized successfully")
+    awesome_company_graph = create_awesome_company_graph()
+    log_with_context(logger, 20, "MyAwesomeFakeCompany chat graph initialized successfully")
 except Exception as e:
     log_with_context(
         logger,
         40,  # ERROR
-        "Failed to initialize TeleCorp graph",
+        "Failed to initialize MyAwesomeFakeCompany graph",
         error=str(e)
     )
 
@@ -36,7 +36,7 @@ except Exception as e:
     response_model=ChatResponse,
     status_code=status.HTTP_200_OK,
     summary="Send chat message",
-    description="Send a message to the TeleCorp AI assistant and receive a response"
+    description="Send a message to the MyAwesomeFakeCompany AI assistant and receive a response"
 )
 async def chat(request: ChatRequest) -> ChatResponse:
     """
@@ -45,7 +45,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
     The assistant maintains conversation history using session_id.
     If no session_id is provided, a new session will be created.
     """
-    if not telecorp_graph:
+    if not awesome_company_graph:
         log_with_context(
             logger,
             40,  # ERROR
@@ -69,7 +69,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
         config = {"configurable": {"thread_id": session_id}}
 
         # Use async invoke since graph nodes are async
-        result = await telecorp_graph.ainvoke(
+        result = await awesome_company_graph.ainvoke(
             {"messages": [HumanMessage(content=request.message)]},
             config
         )
@@ -130,7 +130,7 @@ async def get_welcome_message() -> ChatResponse:
     session_id = f"session_{uuid.uuid4().hex[:8]}"
 
     welcome_message = (
-        "Hi there! I'm Alex from TeleCorp customer support. "
+        "Hi there! I'm Alex from MyAwesomeFakeCompany customer support. "
         "I'm here to help you with any questions about your service or "
         "help you find the right plan for your needs. What can I assist you with today?"
     )

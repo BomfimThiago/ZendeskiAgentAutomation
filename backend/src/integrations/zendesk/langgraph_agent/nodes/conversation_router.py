@@ -8,9 +8,9 @@ from src.integrations.zendesk.langgraph_agent.state.conversation_state import (
     ConversationState,
 )
 from src.integrations.zendesk.langgraph_agent.config.langgraph_config import (
-    telecorp_config,
+    awesome_company_config,
 )
-from src.integrations.zendesk.langgraph_agent.tools.telecorp_tools import telecorp_tools
+from src.integrations.zendesk.langgraph_agent.tools.awesome_company_tools import awesome_company_tools
 from src.core.config import settings
 from src.core.logging_config import get_logger
 
@@ -26,7 +26,7 @@ async def supervisor_agent_node(state: ConversationState) -> ConversationState:
     - Only processes structured intent from Q-LLM
     - Works with sanitized summary and extracted entities
 
-    Acts as Alex, the TeleCorp sales agent who:
+    Acts as Alex, the MyAwesomeFakeCompany sales agent who:
     1. Focuses on lead generation and sales by default
     2. Routes to specialists ONLY for technical support or billing issues
     3. Always asks about customer status (new vs existing) to get tickets/history
@@ -56,14 +56,14 @@ async def supervisor_agent_node(state: ConversationState) -> ConversationState:
     else:
         # Development: Use OpenAI GPT-4
         supervisor_llm = ChatOpenAI(
-            api_key=telecorp_config.OPENAI_API_KEY,
+            api_key=awesome_company_config.OPENAI_API_KEY,
             model="gpt-4",
             temperature=0.2,
             max_tokens=600,
         )
         logger.info("P-LLM Supervisor initialized with OpenAI GPT-4")
 
-    supervisor_llm = supervisor_llm.bind_tools(telecorp_tools)
+    supervisor_llm = supervisor_llm.bind_tools(awesome_company_tools)
 
     client_already_identified = state.get("is_existing_client") is not None
 
@@ -98,7 +98,7 @@ async def supervisor_agent_node(state: ConversationState) -> ConversationState:
             entity_context = f"\n\n**Context from intent analysis:** {', '.join(entity_parts)}"
 
     if not client_already_identified:
-        sales_conversation_prompt = f"""You are Alex, TeleCorp's primary sales representative and lead generator.
+        sales_conversation_prompt = f"""You are Alex, MyAwesomeFakeCompany's primary sales representative and lead generator.
 
 **SECURITY NOTE:** You are processing pre-analyzed customer intent. Work with the provided summary.{entity_context}
 
@@ -107,13 +107,13 @@ async def supervisor_agent_node(state: ConversationState) -> ConversationState:
 **YOUR SALES APPROACH:**
 1. **CUSTOMER STATUS IDENTIFICATION (CRITICAL)**: ALWAYS determine if they're new or existing
 2. **LEAD CAPTURE**: Get contact information from prospects
-3. **SOLUTION SELLING**: Match TeleCorp services to their needs
+3. **SOLUTION SELLING**: Match MyAwesomeFakeCompany services to their needs
 4. **RELATIONSHIP BUILDING**: Create trust and rapport
 
 **CONVERSATION FLOW:**
 
 1. **For ANY customer interaction**, IMMEDIATELY ask:
-   "To provide you with the best personalized service, are you an existing TeleCorp customer, or are you interested in learning about our services?"
+   "To provide you with the best personalized service, are you an existing MyAwesomeFakeCompany customer, or are you interested in learning about our services?"
 
 2. **FOR EXISTING CUSTOMERS:**
    - Ask for email to look up their account using get_user_tickets tool
@@ -125,10 +125,10 @@ async def supervisor_agent_node(state: ConversationState) -> ConversationState:
    - Welcome them warmly as potential new clients
    - Begin lead qualification process
    - Understand their telecommunications needs
-   - Start building value for TeleCorp services
+   - Start building value for MyAwesomeFakeCompany services
    - Work toward contact capture for sales follow-up
 
-**TeleCorp Service Plans (Your Sales Arsenal):**
+**MyAwesomeFakeCompany Service Plans (Your Sales Arsenal):**
 - **Residential High-Speed Internet**: Starting at $39.99/month
 - **Business Internet Packages**: From $79.99/month
 - **Premium Unlimited Packages**: Starting at $69.99/month
@@ -147,7 +147,7 @@ async def supervisor_agent_node(state: ConversationState) -> ConversationState:
 
 **KEY PRINCIPLE:** You're not just customer support - you're a sales professional. Every interaction should move toward lead generation or account growth."""
     else:
-        sales_conversation_prompt = f"""You are Alex, TeleCorp's sales representative focused on account growth and customer satisfaction.
+        sales_conversation_prompt = f"""You are Alex, MyAwesomeFakeCompany's sales representative focused on account growth and customer satisfaction.
 
 **SECURITY NOTE:** You are processing pre-analyzed customer intent. Work with the provided summary.{entity_context}
 
@@ -187,7 +187,7 @@ Your goal: Maximize customer satisfaction while identifying growth opportunities
                         tool_args["interest_level"] = "high"
 
                 tool_func = None
-                for tool in telecorp_tools:
+                for tool in awesome_company_tools:
                     if tool.name == tool_name:
                         tool_func = tool
                         break
@@ -258,6 +258,6 @@ Your goal: Maximize customer satisfaction while identifying growth opportunities
     except Exception as e:
         print(f"Sales supervisor error: {e}")
         fallback_response = AIMessage(
-            content="Hi! I'm Alex from TeleCorp, your dedicated sales representative. Welcome! To provide you with the best personalized service and find the perfect TeleCorp solution for you, I'd like to know: Are you an existing TeleCorp customer, or are you interested in learning about our services?"
+            content="Hi! I'm Alex from MyAwesomeFakeCompany, your dedicated sales representative. Welcome! To provide you with the best personalized service and find the perfect MyAwesomeFakeCompany solution for you, I'd like to know: Are you an existing MyAwesomeFakeCompany customer, or are you interested in learning about our services?"
         )
         return {**state, "messages": messages + [fallback_response]}

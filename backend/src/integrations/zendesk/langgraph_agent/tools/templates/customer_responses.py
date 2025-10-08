@@ -14,7 +14,7 @@ def _billing_response() -> str:
     Our billing specialists will review your account and contact you within
     48 hours to resolve this issue. Please keep ticket #{ticket_id} for your records.
 
-    For urgent billing matters, you can also call our billing support at 1-800-TELECORP.
+    For urgent billing matters, you can also call our billing support at 1-800-AWESOME-COMPANY.
     """.strip()
 
 
@@ -60,7 +60,7 @@ def _sales_response() -> str:
     return """
     Excellent! I've prioritized your sales inquiry as ticket #{ticket_id}.
 
-    A TeleCorp sales specialist will contact you within 4 hours to discuss your
+    A MyAwesomeFakeCompany sales specialist will contact you within 4 hours to discuss your
     specific needs and provide personalized pricing options. We have some fantastic
     promotional offers available right now!
 
@@ -86,11 +86,11 @@ def _general_error_response() -> str:
     return """
     I apologize, but I'm having trouble creating a support ticket right now.
 
-    Please contact TeleCorp customer service directly:
-    • General Support: 1-800-TELECORP
+    Please contact MyAwesomeFakeCompany customer service directly:
+    • General Support: 1-800-AWESOME-COMPANY
     • Technical Support: 1-800-TECH-TEL
     • Sales Inquiries: 1-800-NEW-PLAN
-    • Billing Questions: 1-800-TELECORP
+    • Billing Questions: 1-800-AWESOME-COMPANY
 
     Our team is available 24/7 to assist you.
     """.strip()

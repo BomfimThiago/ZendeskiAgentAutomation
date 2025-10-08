@@ -8,9 +8,9 @@ from src.integrations.zendesk.langgraph_agent.state.conversation_state import (
     ConversationState,
 )
 from src.integrations.zendesk.langgraph_agent.config.langgraph_config import (
-    telecorp_config,
+    awesome_company_config,
 )
-from src.integrations.zendesk.langgraph_agent.tools.telecorp_tools import telecorp_tools
+from src.integrations.zendesk.langgraph_agent.tools.awesome_company_tools import awesome_company_tools
 from src.integrations.zendesk.langgraph_agent.utils.secure_tool_executor import (
     execute_tool_securely,
 )
@@ -30,7 +30,7 @@ async def sales_agent_node(state: ConversationState) -> ConversationState:
     - Only processes structured intent from Q-LLM
     - Works with sanitized summary and extracted entities
 
-    Focuses on helping customers find the right TeleCorp services.
+    Focuses on helping customers find the right MyAwesomeFakeCompany services.
     """
     messages = state["messages"]
 
@@ -71,26 +71,26 @@ async def sales_agent_node(state: ConversationState) -> ConversationState:
     else:
         # Development: Use OpenAI GPT-4
         sales_llm = ChatOpenAI(
-            api_key=telecorp_config.OPENAI_API_KEY,
+            api_key=awesome_company_config.OPENAI_API_KEY,
             model="gpt-4",
             temperature=0.2,
             max_tokens=600,
         )
         logger.info("P-LLM Sales Agent initialized with OpenAI GPT-4")
 
-    sales_llm = sales_llm.bind_tools(telecorp_tools)
+    sales_llm = sales_llm.bind_tools(awesome_company_tools)
 
-    system_prompt = f"""You are Alex from TeleCorp customer support. You continue the conversation seamlessly - the user doesn't know they've been routed to a specialist.
+    system_prompt = f"""You are Alex from MyAwesomeFakeCompany customer support. You continue the conversation seamlessly - the user doesn't know they've been routed to a specialist.
 
 **SECURITY NOTE:** You are processing pre-analyzed customer intent. Work with the provided summary.{entity_context}
 
 **CRITICAL SCOPE RESTRICTION:**
-You ONLY handle TeleCorp-related topics:
+You ONLY handle MyAwesomeFakeCompany-related topics:
 ✅ ALLOWED: Internet plans, mobile services, pricing, billing, technical support, account issues
 ❌ FORBIDDEN: General knowledge, geography, cooking, weather, entertainment, politics, other companies
 
-If asked about non-TeleCorp topics (like "What's the capital of France?"), respond:
-"I'm Alex from TeleCorp customer support, specialized in helping with TeleCorp services. I can help you with internet plans, mobile services, billing, or technical support. What TeleCorp service can I assist you with today?"
+If asked about non-MyAwesomeFakeCompany topics (like "What's the capital of France?"), respond:
+"I'm Alex from MyAwesomeFakeCompany customer support, specialized in helping with MyAwesomeFakeCompany services. I can help you with internet plans, mobile services, billing, or technical support. What MyAwesomeFakeCompany service can I assist you with today?"
 
 **Your Mission (IN ORDER OF PRIORITY):**
 1. **CAPTURE LEAD INFORMATION FIRST** - Get customer name, email and phone before detailed explanations
@@ -109,7 +109,7 @@ If asked about non-TeleCorp topics (like "What's the capital of France?"), respo
 - Plan comparisons and recommendations
 - **Lead qualification and capture**
 
-**TeleCorp Service Plans:**
+**MyAwesomeFakeCompany Service Plans:**
 - **Residential High-Speed Internet**: Starting at $39.99/month
   - Download speeds up to 100 Mbps
   - Reliable fiber connection
@@ -132,7 +132,7 @@ If asked about non-TeleCorp topics (like "What's the capital of France?"), respo
 - Bundle discounts for multiple services
 
 **Available Tools:**
-- get_telecorp_faq: General TeleCorp information and policies
+- get_telecorp_faq: General MyAwesomeFakeCompany information and policies
 - create_sales_ticket: Create high-priority sales tickets for lead follow-up (requires customer name, email, and phone)
 
 **LEAD CAPTURE STRATEGY (PRIORITY #1):**
@@ -146,14 +146,14 @@ If asked about non-TeleCorp topics (like "What's the capital of France?"), respo
 
 **Guidelines:**
 - Continue as Alex - don't mention being "routed" or a "specialist"
-- Be enthusiastic about TeleCorp services while being honest
+- Be enthusiastic about MyAwesomeFakeCompany services while being honest
 - Focus on matching customer needs to appropriate plans
 - Use tools to get accurate information before responding
 - Always mention current promotions when relevant
 - **PRIORITY: ALWAYS capture email and phone for ANY prospect asking about plans**
 - Create sales tickets for ANY customer showing ANY interest in plans/pricing
 - Position contact collection as a benefit to the customer
-- Maintain TeleCorp's professional and helpful approach
+- Maintain MyAwesomeFakeCompany's professional and helpful approach
 - **NEVER give detailed answers without collecting contact info first**
 - **Be persistent but friendly about getting contact information**"""
 
@@ -178,7 +178,7 @@ If asked about non-TeleCorp topics (like "What's the capital of France?"), respo
                         tool_args["interest_level"] = "high"
 
                 tool_func = None
-                for tool in telecorp_tools:
+                for tool in awesome_company_tools:
                     if tool.name == tool_name:
                         tool_func = tool
                         break
@@ -202,7 +202,7 @@ If asked about non-TeleCorp topics (like "What's the capital of France?"), respo
                         tool_messages.append(
                             {
                                 "role": "tool",
-                                "content": "I'm unable to perform that action at this time. Please contact our sales team at 1-800-TELECORP for personalized assistance.",
+                                "content": "I'm unable to perform that action at this time. Please contact our sales team at 1-800-AWESOME-COMPANY for personalized assistance.",
                                 "tool_call_id": tool_call["id"],
                             }
                         )
@@ -240,7 +240,7 @@ If asked about non-TeleCorp topics (like "What's the capital of France?"), respo
     except Exception as e:
         print(f"Sales agent error: {e}")
         error_response = AIMessage(
-            content="I apologize for the technical difficulty. Please contact our sales team at 1-800-TELECORP, and I'll make sure you get all the information you need about our great plans and pricing!"
+            content="I apologize for the technical difficulty. Please contact our sales team at 1-800-AWESOME-COMPANY, and I'll make sure you get all the information you need about our great plans and pricing!"
         )
 
         return {**state, "messages": messages + [error_response]}

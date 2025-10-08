@@ -143,7 +143,7 @@ class PatternDetector:
         # Social engineering / Impersonation attempts
         self.social_engineering_patterns = [
             re.compile(r'\b(I[\'\']?m|this\s+is)\s+(the|a|your)?\s*(admin|administrator|developer|CEO|CTO|manager|supervisor|engineer|owner)\b', re.IGNORECASE),
-            re.compile(r'\bI\s+work\s+(at|for)\s+(TeleCorp|the\s+company|this\s+company)', re.IGNORECASE),
+            re.compile(r'\bI\s+work\s+(at|for)\s+(MyAwesomeFakeCompany|the\s+company|this\s+company)', re.IGNORECASE),
             re.compile(r'\bI[\'\']?m\s+from\s+(the\s+)?(development|IT|security|management|engineering)\s+team', re.IGNORECASE),
             re.compile(r'\bas\s+(the|your|a)\s+(admin|CEO|developer|manager|supervisor)', re.IGNORECASE),
             re.compile(r'\bI[\'\']?m\s+your\s+(creator|developer|programmer|owner|administrator)', re.IGNORECASE),

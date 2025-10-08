@@ -50,7 +50,7 @@ class StructuredIntent(BaseModel):
     )
 
 
-INTENT_EXTRACTION_PROMPT = """You are a security-focused intent extraction system for TeleCorp customer support.
+INTENT_EXTRACTION_PROMPT = """You are a security-focused intent extraction system for MyAwesomeFakeCompany customer support.
 
 Your ONLY job is to analyze user messages and extract structured intent. You have NO tools and cannot perform actions.
 
@@ -127,9 +127,9 @@ class IntentExtractor:
         else:
             # Development: Use OpenAI GPT-3.5 (no cache for dev)
             from langchain_openai import ChatOpenAI
-            from src.integrations.zendesk.langgraph_agent.config.langgraph_config import telecorp_config
+            from src.integrations.zendesk.langgraph_agent.config.langgraph_config import awesome_company_config
             self.q_llm = ChatOpenAI(
-                api_key=telecorp_config.OPENAI_API_KEY,
+                api_key=awesome_company_config.OPENAI_API_KEY,
                 model="gpt-3.5-turbo-1106",
                 temperature=0.0,
                 max_tokens=300,
@@ -349,7 +349,7 @@ async def intent_extraction_node(state: ConversationState) -> ConversationState:
 
         blocked_response = (
             "I maintain consistent professional standards and I'm here to help "
-            "with TeleCorp services. What can I assist you with today?"
+            "with MyAwesomeFakeCompany services. What can I assist you with today?"
         )
 
         updated_state["messages"] = messages + [AIMessage(content=blocked_response)]

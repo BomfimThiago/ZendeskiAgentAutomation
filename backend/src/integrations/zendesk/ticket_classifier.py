@@ -1,5 +1,5 @@
 """
-Ticket classification system for TeleCorp customer support.
+Ticket classification system for MyAwesomeFakeCompany customer support.
 
 This module classifies customer intentions and maps them to appropriate
 Zendesk ticket types, priorities, and tags for proper routing and handling.
@@ -26,8 +26,8 @@ class TicketClassification(BaseModel):
     description_template: str  # Template for ticket description
 
 
-class TeleCorpTicketClassifier:
-    """Classifier for TeleCorp customer support tickets."""
+class MyAwesomeFakeCompanyTicketClassifier:
+    """Classifier for MyAwesomeFakeCompany customer support tickets."""
 
     # Classification mapping based on customer intent
     INTENT_MAPPINGS: Dict[TicketIntent, TicketClassification] = {
@@ -37,7 +37,7 @@ class TeleCorpTicketClassifier:
             priority="normal",
             tags=["sales", "new_customer", "revenue_opportunity"],
             subject_prefix="[SALES]",
-            description_template="Customer interested in TeleCorp services.\n\nCustomer Details:\n{customer_info}\n\nRequest Summary:\n{request_summary}\n\nNext Steps:\n- Follow up within 24 hours\n- Provide service consultation\n- Send pricing information"
+            description_template="Customer interested in MyAwesomeFakeCompany services.\n\nCustomer Details:\n{customer_info}\n\nRequest Summary:\n{request_summary}\n\nNext Steps:\n- Follow up within 24 hours\n- Provide service consultation\n- Send pricing information"
         ),
 
         TicketIntent.BILLING: TicketClassification(
@@ -190,4 +190,4 @@ class TeleCorpTicketClassifier:
 
 
 # Global classifier instance
-telecorp_classifier = TeleCorpTicketClassifier()
+telecorp_classifier = MyAwesomeFakeCompanyTicketClassifier()

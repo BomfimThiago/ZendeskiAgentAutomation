@@ -184,7 +184,7 @@ def get_knowledge_file_path(filename: str, subfolder: Optional[str] = None) -> P
     Returns:
         Path object for the knowledge base file
     """
-    base_path = Path("telecorpBaseKnowledge")
+    base_path = Path("myawesomefakecompanyBaseKnowledge")
 
     if subfolder:
         return base_path / subfolder / filename

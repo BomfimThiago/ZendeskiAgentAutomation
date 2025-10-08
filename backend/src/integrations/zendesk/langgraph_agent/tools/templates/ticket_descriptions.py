@@ -90,7 +90,7 @@ SUPPORT_DESCRIPTION_TEMPLATES = {
 def _sales_template() -> str:
     """Sales inquiry ticket description template."""
     return """
-    Customer interested in TeleCorp services.
+    Customer interested in MyAwesomeFakeCompany services.
 
     Customer Details:
     {customer_info}

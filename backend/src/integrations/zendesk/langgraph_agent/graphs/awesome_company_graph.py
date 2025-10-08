@@ -1,4 +1,4 @@
-"""TeleCorp supervisor-based LangGraph workflow with plan-and-execute pattern."""
+"""MyAwesomeFakeCompany supervisor-based LangGraph workflow with plan-and-execute pattern."""
 
 import logging
 import warnings
@@ -38,7 +38,7 @@ from src.integrations.zendesk.langgraph_agent.nodes.intent_extraction_node impor
     intent_extraction_node,
 )
 from src.integrations.zendesk.langgraph_agent.config.langgraph_config import (
-    telecorp_config,
+    awesome_company_config,
 )
 from src.core.config import settings, setup_langsmith
 
@@ -106,9 +106,9 @@ def should_continue_after_intent_extraction(state: ConversationState) -> str:
     return "supervisor"
 
 
-def create_telecorp_graph():
+def create_awesome_company_graph():
     """
-    Create TeleCorp customer support workflow with TRUE Dual-LLM pattern.
+    Create MyAwesomeFakeCompany customer support workflow with TRUE Dual-LLM pattern.
 
     Implements Simon Willison's dual-LLM security architecture:
     1. Q-LLM (intent extraction) processes ALL raw user input FIRST
@@ -172,7 +172,7 @@ def create_telecorp_graph():
     # Note: Conversation history is lost on container restart
     # For persistent history across restarts, implement async DynamoDB checkpointer
     checkpointer = MemorySaver()
-    logger = logging.getLogger("telecorp_graph")
+    logger = logging.getLogger("awesome_company_graph")
     logger.info("Using MemorySaver checkpointer (in-memory conversation history)")
 
     compiled_graph = graph.compile(checkpointer=checkpointer)

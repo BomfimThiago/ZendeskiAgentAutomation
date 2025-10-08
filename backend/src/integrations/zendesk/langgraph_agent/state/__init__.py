@@ -1,4 +1,4 @@
-"""State management for TeleCorp LangGraph Agent."""
+"""State management for MyAwesomeFakeCompany LangGraph Agent."""
 
 from .conversation_state import ConversationState
 

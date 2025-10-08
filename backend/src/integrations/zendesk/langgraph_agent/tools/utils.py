@@ -1,5 +1,5 @@
 """
-Utility functions and constants for TeleCorp LangGraph tools.
+Utility functions and constants for MyAwesomeFakeCompany LangGraph tools.
 
 This module contains helper functions, constants, and shared utilities
 used across multiple tool implementations.
@@ -39,7 +39,7 @@ VALIDATION_MESSAGES = {
         Once I have this information, I'll create your support ticket right away.
     """,
     "missing_name_email_sales": """
-        I'm excited to help you with TeleCorp services! To ensure our sales team can provide you with personalized assistance and follow up properly, I'll need to get some information from you first.
+        I'm excited to help you with MyAwesomeFakeCompany services! To ensure our sales team can provide you with personalized assistance and follow up properly, I'll need to get some information from you first.
 
         Could you please provide:
         • Your full name
@@ -48,7 +48,7 @@ VALIDATION_MESSAGES = {
         Once I have this information, I'll prioritize your sales inquiry and get you connected with our best specialists!
     """,
     "missing_email_support": "Thanks, {name}! I have your name, but I'll also need your email address so our support team can follow up with you directly.\n\nCould you please provide your email address? Once I have that, I'll create your support ticket immediately.",
-    "missing_email_sales": """Great to meet you, {name}! I'm excited to help you find the perfect TeleCorp solution. To ensure our sales team can follow up with personalized pricing and options, I'll need your email address and phone number.
+    "missing_email_sales": """Great to meet you, {name}! I'm excited to help you find the perfect MyAwesomeFakeCompany solution. To ensure our sales team can follow up with personalized pricing and options, I'll need your email address and phone number.
 
         Could you please provide:
         • Your email address
@@ -83,7 +83,7 @@ def validate_customer_info(
     Returns:
         Tuple of (is_valid, error_message)
     """
-    invalid_names = ["TeleCorp Customer", "Prospective Customer"]
+    invalid_names = ["MyAwesomeFakeCompany Customer", "Prospective Customer"]
 
     if not name or name in invalid_names:
         msg_key = (
@@ -129,7 +129,7 @@ def build_sales_context(interest_level: str, conversation_summary: str) -> str:
         Conversation Summary: {conversation_summary}
 
         Sales Notes:
-        - Customer engaged with AI agent about TeleCorp services
+        - Customer engaged with AI agent about MyAwesomeFakeCompany services
         - Qualified lead requiring sales follow-up
         - Opportunity for immediate conversion
     """

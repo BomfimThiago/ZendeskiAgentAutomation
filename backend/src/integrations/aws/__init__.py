@@ -1,4 +1,4 @@
-"""AWS integrations for TeleCorp backend."""
+"""AWS integrations for MyAwesomeFakeCompany backend."""
 
 from .bedrock_llm import (
     BedrockChatModel,

@@ -1,5 +1,5 @@
 """
-Zendesk ticket creation tools for TeleCorp LangGraph agents.
+Zendesk ticket creation tools for MyAwesomeFakeCompany LangGraph agents.
 
 This module provides tools for creating and managing Zendesk tickets.
 """
@@ -111,7 +111,7 @@ async def create_sales_ticket(
     IMPORTANT: Always collect customer name, email, and phone before using this tool.
     If you don't have this information, ask the customer for it first.
 
-    Use this tool when customers show interest in purchasing TeleCorp services.
+    Use this tool when customers show interest in purchasing MyAwesomeFakeCompany services.
 
     Args:
         customer_message: Customer's sales inquiry or interest
@@ -168,7 +168,7 @@ async def get_user_tickets(customer_email: str) -> str:
     """
     Get existing Zendesk tickets for a customer by email address.
 
-    Use this tool to check if a TeleCorp customer has existing support tickets
+    Use this tool to check if a MyAwesomeFakeCompany customer has existing support tickets
     that they might want to discuss or follow up on.
 
     Args:
@@ -196,7 +196,7 @@ async def get_user_tickets(customer_email: str) -> str:
 
         ticket_display = format_ticket_list(customer_visible_tickets)
 
-        response = f"""Great! I found your account. You have {len(customer_visible_tickets)} support ticket(s) with TeleCorp:
+        response = f"""Great! I found your account. You have {len(customer_visible_tickets)} support ticket(s) with MyAwesomeFakeCompany:
 
 {ticket_display}
 
