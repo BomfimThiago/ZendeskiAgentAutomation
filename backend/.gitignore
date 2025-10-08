@@ -31,3 +31,7 @@ htmlcov/
 
 # OS
 .DS_Store
+lambda_deployment/
+lambda_function.zip
+*.tfplan
+terraform/tfplan
