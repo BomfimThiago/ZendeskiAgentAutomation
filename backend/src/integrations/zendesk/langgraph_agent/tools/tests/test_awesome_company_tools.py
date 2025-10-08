@@ -15,7 +15,7 @@ from src.integrations.zendesk.langgraph_agent.tools.awesome_company_tools import
     get_plan_comparison,
     get_internet_speed_guide,
     get_router_configuration_guide,
-    get_billing_information_guide,
+    get_technical_troubleshooting_steps,
 )
 
 
@@ -113,12 +113,12 @@ class TestKnowledgeBaseTools:
 
     @patch('src.integrations.zendesk.langgraph_agent.tools.awesome_company_tools.get_knowledge_file_path')
     @patch('src.integrations.zendesk.langgraph_agent.tools.awesome_company_tools.extract_pdf_content_chunked')
-    def test_get_billing_information_guide_returns_content(self, mock_extract_pdf, mock_get_path):
-        """Test billing information guide tool."""
-        mock_get_path.return_value = Path("/fake/path/billing_guide.pdf")
-        mock_extract_pdf.return_value = "Your bill includes monthly service fees..."
+    def test_get_technical_troubleshooting_steps_returns_content(self, mock_extract_pdf, mock_get_path):
+        """Test technical troubleshooting steps tool."""
+        mock_get_path.return_value = Path("/fake/path/troubleshooting.pdf")
+        mock_extract_pdf.return_value = "Step 1: Check your router connection..."
 
-        result = get_billing_information_guide.invoke({})
+        result = get_technical_troubleshooting_steps.invoke({"issue_type": "connectivity"})
 
         assert result is not None
         assert isinstance(result, str)
@@ -201,7 +201,7 @@ class TestToolInvocation:
             get_plan_comparison,
             get_internet_speed_guide,
             get_router_configuration_guide,
-            get_billing_information_guide,
+            get_technical_troubleshooting_steps,
         ]
 
         for tool in tools:
@@ -219,7 +219,7 @@ class TestToolInvocation:
             get_plan_comparison,
             get_internet_speed_guide,
             get_router_configuration_guide,
-            get_billing_information_guide,
+            get_technical_troubleshooting_steps,
         ]
 
         for tool in tools:

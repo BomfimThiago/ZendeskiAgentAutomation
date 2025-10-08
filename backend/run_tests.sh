@@ -16,11 +16,23 @@ echo -e "${BLUE}================================${NC}"
 echo -e "${BLUE}AI Agent Test Runner${NC}"
 echo -e "${BLUE}================================${NC}"
 
-# Check if pytest is installed
-if ! python3 -m pytest --version > /dev/null 2>&1; then
-    echo -e "${RED}Error: pytest not found${NC}"
-    echo -e "${YELLOW}Installing test dependencies...${NC}"
-    pip install -r requirements-test.txt
+# Check if uv is available, otherwise fall back to pip
+if command -v uv &> /dev/null; then
+    PYTEST_CMD="uv run pytest"
+    # Check if pytest is installed
+    if ! uv run pytest --version > /dev/null 2>&1; then
+        echo -e "${RED}Error: pytest not found${NC}"
+        echo -e "${YELLOW}Installing test dependencies...${NC}"
+        uv pip install pytest pytest-asyncio pytest-cov pytest-mock
+    fi
+else
+    PYTEST_CMD="python3 -m pytest"
+    # Check if pytest is installed
+    if ! python3 -m pytest --version > /dev/null 2>&1; then
+        echo -e "${RED}Error: pytest not found${NC}"
+        echo -e "${YELLOW}Installing test dependencies...${NC}"
+        python3 -m pip install pytest pytest-asyncio pytest-cov pytest-mock
+    fi
 fi
 
 # Parse command line arguments
@@ -29,22 +41,22 @@ COMMAND=${1:-all}
 case $COMMAND in
     all)
         echo -e "\n${GREEN}Running all tests...${NC}"
-        python3 -m pytest tests/ src/ -v
+        $PYTEST_CMD tests/ src/ -v
         ;;
 
     quick)
         echo -e "\n${GREEN}Running quick test (no coverage)...${NC}"
-        python3 -m pytest tests/ src/ -q
+        $PYTEST_CMD tests/ src/ -q
         ;;
 
     coverage)
         echo -e "\n${GREEN}Running tests with coverage...${NC}"
-        python3 -m pytest tests/ src/ --cov=src --cov-report=term-missing -v
+        $PYTEST_CMD tests/ src/ --cov=src --cov-report=term-missing -v
         ;;
 
     week1)
         echo -e "\n${GREEN}Running Week 1 tests (Tools & Security)...${NC}"
-        python3 -m pytest \
+        $PYTEST_CMD \
             src/integrations/zendesk/langgraph_agent/tools/tests/ \
             src/security/tests/ \
             -v
@@ -52,37 +64,37 @@ case $COMMAND in
 
     week2)
         echo -e "\n${GREEN}Running Week 2 tests (Nodes)...${NC}"
-        python3 -m pytest \
+        $PYTEST_CMD \
             src/integrations/zendesk/langgraph_agent/nodes/tests/ \
             -v
         ;;
 
     security)
         echo -e "\n${GREEN}Running security tests only...${NC}"
-        python3 -m pytest src/security/tests/ -v
+        $PYTEST_CMD src/security/tests/ -v
         ;;
 
     tools)
         echo -e "\n${GREEN}Running tool tests only...${NC}"
-        python3 -m pytest src/integrations/zendesk/langgraph_agent/tools/tests/ -v
+        $PYTEST_CMD src/integrations/zendesk/langgraph_agent/tools/tests/ -v
         ;;
 
     nodes)
         echo -e "\n${GREEN}Running node tests only...${NC}"
-        python3 -m pytest src/integrations/zendesk/langgraph_agent/nodes/tests/ -v
+        $PYTEST_CMD src/integrations/zendesk/langgraph_agent/nodes/tests/ -v
         ;;
 
     critical)
         echo -e "\n${GREEN}Running critical security tests...${NC}"
         echo -e "${YELLOW}Q-LLM Intent Extraction (Most Critical)${NC}"
-        python3 -m pytest \
+        $PYTEST_CMD \
             src/integrations/zendesk/langgraph_agent/nodes/tests/test_intent_extraction_node.py \
             -v
         ;;
 
     failed)
         echo -e "\n${GREEN}Re-running failed tests...${NC}"
-        python3 -m pytest --lf -v
+        $PYTEST_CMD --lf -v
         ;;
 
     watch)
@@ -93,7 +105,7 @@ case $COMMAND in
 
     html)
         echo -e "\n${GREEN}Generating HTML coverage report...${NC}"
-        python3 -m pytest tests/ src/ --cov=src --cov-report=html
+        $PYTEST_CMD tests/ src/ --cov=src --cov-report=html
         echo -e "${GREEN}Report generated at: htmlcov/index.html${NC}"
         ;;
 
