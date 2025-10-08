@@ -16,22 +16,34 @@ variable "project_name" {
   default     = "telecorp"
 }
 
-variable "lambda_function_name" {
-  description = "Name of the Lambda function"
+variable "vpc_cidr" {
+  description = "CIDR block for VPC"
   type        = string
-  default     = "telecorp-backend"
+  default     = "10.0.0.0/16"
 }
 
-variable "lambda_memory_size" {
-  description = "Memory size for Lambda function in MB"
-  type        = number
-  default     = 512
+variable "availability_zones" {
+  description = "Availability zones for subnets"
+  type        = list(string)
+  default     = ["us-east-1a", "us-east-1b"]
 }
 
-variable "lambda_timeout" {
-  description = "Timeout for Lambda function in seconds"
+variable "fargate_cpu" {
+  description = "Fargate CPU units (256, 512, 1024, 2048, 4096)"
+  type        = string
+  default     = "512"
+}
+
+variable "fargate_memory" {
+  description = "Fargate memory in MB (1024, 2048, 3072, 4096, 8192, etc)"
+  type        = string
+  default     = "1024"
+}
+
+variable "app_count" {
+  description = "Number of ECS tasks to run"
   type        = number
-  default     = 30
+  default     = 1
 }
 
 variable "dynamodb_billing_mode" {
@@ -83,7 +95,19 @@ variable "log_retention_days" {
 }
 
 variable "cors_origins" {
-  description = "CORS allowed origins for API Gateway"
+  description = "CORS allowed origins for ALB"
   type        = list(string)
   default     = ["*"]
+}
+
+variable "container_port" {
+  description = "Port exposed by the Docker container"
+  type        = number
+  default     = 8000
+}
+
+variable "health_check_path" {
+  description = "Health check endpoint path"
+  type        = string
+  default     = "/health"
 }

@@ -1,3 +1,7 @@
 -r base.txt
 
-gunicorn>=21.2.0
+# Production ASGI server
+uvicorn[standard]>=0.24.0
+
+# AWS SDK
+boto3>=1.28.0

@@ -25,7 +25,7 @@ resource "aws_dynamodb_table" "conversations" {
     enabled = true
   }
 
-  # TTL for automatic cleanup (optional, can be enabled later)
+  # TTL for automatic cleanup
   ttl {
     attribute_name = "ttl"
     enabled        = true
@@ -33,7 +33,7 @@ resource "aws_dynamodb_table" "conversations" {
 
   tags = {
     Name        = "${var.project_name}-conversations"
-    Description = "LangGraph conversation state and checkpoints"
+    Description = "LangGraph conversation state and checkpoints with async thread pool support"
   }
 }
 
