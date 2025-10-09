@@ -96,7 +96,20 @@ class ApiService {
    */
   async checkHealth(): Promise<{ status: string }> {
     try {
-      const response = await fetch(`${this.baseUrl.replace('/api/v1', '')}/health`, {
+      // Construct health URL by removing /api/v1 path
+      // this.baseUrl = "http://localhost:8000/api/v1"
+      // healthUrl should be "http://localhost:8000/health"
+      let healthUrl: string;
+
+      if (this.baseUrl.includes('/api/v1')) {
+        healthUrl = this.baseUrl.replace('/api/v1', '/health');
+      } else if (this.baseUrl.includes('/api')) {
+        healthUrl = this.baseUrl.replace('/api', '/health');
+      } else {
+        healthUrl = `${this.baseUrl}/health`;
+      }
+
+      const response = await fetch(healthUrl, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
