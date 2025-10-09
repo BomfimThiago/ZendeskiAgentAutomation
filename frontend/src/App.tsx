@@ -130,7 +130,6 @@ function App() {
             <div className="logo-badge">
               <span className="logo-letters">MAFC</span>
             </div>
-            <span className="logo-text">MyAwesomeFakeCompany</span>
           </div>
           <ul className="nav-menu">
             <li><a href="#home">Home</a></li>
@@ -278,7 +277,6 @@ function App() {
               <div className="logo-badge">
                 <span className="logo-letters">MAFC</span>
               </div>
-              <h4>MyAwesomeFakeCompany</h4>
             </div>
             <p>Connecting communities with reliable, high-speed internet since 2018.</p>
           </div>
