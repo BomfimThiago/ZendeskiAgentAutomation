@@ -52,7 +52,7 @@ function App() {
         setMessages([
           {
             role: 'assistant',
-            content: '⚠️ Chat is currently offline. Please ensure the backend server is running.\n\nTo start the backend:\n1. Open a terminal\n2. Navigate to the backend directory\n3. Run: uvicorn src.main:app --reload',
+            content: '⚠️ MAFC Chat is currently offline. Please ensure the backend server is running.\n\nTo start the backend:\n1. Open a terminal\n2. Navigate to the backend directory\n3. Run: uvicorn src.main:app --reload',
             timestamp: new Date().toLocaleTimeString(),
           },
         ]);
@@ -127,7 +127,9 @@ function App() {
       <nav className="navbar">
         <div className="nav-container">
           <div className="nav-logo">
-            <span className="logo-icon">⚡</span>
+            <div className="logo-badge">
+              <span className="logo-letters">MAFC</span>
+            </div>
             <span className="logo-text">MyAwesomeFakeCompany</span>
           </div>
           <ul className="nav-menu">
@@ -272,7 +274,12 @@ function App() {
       <footer className="footer">
         <div className="footer-container">
           <div className="footer-section">
-            <h4>MyAwesomeFakeCompany</h4>
+            <div className="footer-logo">
+              <div className="logo-badge">
+                <span className="logo-letters">MAFC</span>
+              </div>
+              <h4>MyAwesomeFakeCompany</h4>
+            </div>
             <p>Connecting communities with reliable, high-speed internet since 2018.</p>
           </div>
           <div className="footer-section">
@@ -287,13 +294,13 @@ function App() {
             <h4>Contact</h4>
             <ul>
               <li>📞 1-800-AWESOME</li>
-              <li>📧 support@myawesomefakecompany.com</li>
+              <li>📧 support@mafc.com</li>
               <li>📍 123 Internet Lane, Web City</li>
             </ul>
           </div>
         </div>
         <div className="footer-bottom">
-          <p>&copy; 2024 MyAwesomeFakeCompany. All rights reserved.</p>
+          <p>&copy; 2024 MAFC. All rights reserved.</p>
         </div>
       </footer>
 

@@ -130,7 +130,7 @@ async def get_welcome_message() -> ChatResponse:
     session_id = f"session_{uuid.uuid4().hex[:8]}"
 
     welcome_message = (
-        "Hi there! I'm Alex from MyAwesomeFakeCompany customer support. "
+        "Hi there! I'm Alex from MAFC customer support. "
         "I'm here to help you with any questions about your service or "
         "help you find the right plan for your needs. What can I assist you with today?"
     )
