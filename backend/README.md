@@ -1,6 +1,6 @@
-# TeleCorp Backend API
+# MyAwesomeFakeCompany Backend API
 
-FastAPI-based backend for the TeleCorp AI Assistant application with LangGraph multi-agent system.
+FastAPI-based backend for the MyAwesomeFakeCompany AI Assistant application with LangGraph multi-agent system.
 
 ## Features
 
@@ -57,7 +57,7 @@ OPENAI_API_KEY=your-openai-api-key
 # LangSmith (Optional - for tracing)
 LANGSMITH_TRACING=true
 LANGSMITH_API_KEY=your-langsmith-api-key
-LANGSMITH_PROJECT=TelecorpAIAutomation
+LANGSMITH_PROJECT=MyAwesomeFakeCompany
 ```
 
 ## Running the Server
@@ -117,7 +117,7 @@ backend/
 │   │       ├── chat_schemas.py   # Chat Pydantic models
 │   │       └── client.py         # Zendesk API client
 │   └── main.py                # FastAPI application
-├── telecorpBaseKnowledge/     # Knowledge base documents
+├── myawesomefakecompanyBaseKnowledge/  # Knowledge base documents
 ├── requirements/              # Python dependencies
 ├── logs/                      # Application logs
 ├── .env                       # Environment variables
@@ -126,9 +126,104 @@ backend/
 
 ## Testing
 
+### Quick Test
+
 ```bash
-cd backend
-pytest
+# Run all tests
+./run_tests.sh all
+
+# Run with coverage report
+./run_tests.sh coverage
+
+# Run specific test suites
+./run_tests.sh security      # Security tests only
+./run_tests.sh tools         # Tool tests only
+./run_tests.sh nodes         # Node tests only
+./run_tests.sh critical      # Critical security tests
+
+# Run tests for specific weeks
+./run_tests.sh week1         # Week 1: Tools & Security
+./run_tests.sh week2         # Week 2: Nodes
+```
+
+### Test Suite Details
+
+**196 Total Tests:**
+- 189 passing (96.4%)
+- 7 deselected (unimplemented pattern detector features)
+
+**Coverage:**
+- ✅ Q-LLM intent extraction (17 tests)
+- ✅ Dual-LLM security architecture validation
+- ✅ Specialized agents (support, sales, billing, quarantined)
+- ✅ Graph routing and conversation flows
+- ✅ Zendesk integration tools
+- ✅ Pattern-based security detection
+- ✅ End-to-end integration tests
+
+### Manual Test Execution
+
+```bash
+# Using uv (recommended)
+uv run pytest tests/ src/ -v
+
+# Using pytest directly
+pytest tests/ src/ -v
+```
+
+## CI/CD Pipeline
+
+### GitHub Actions Workflow
+
+The project uses GitHub Actions to automatically run tests on every pull request.
+
+**Workflow: `.github/workflows/test.yml`**
+
+**Triggers:**
+- Pull requests to `main` or `develop` branches
+- Pushes to `main` branch
+- Changes in `src/`, `tests/`, or configuration files
+
+**Jobs:**
+1. Checkout code
+2. Set up Python 3.12
+3. Install `uv` package manager
+4. Install dependencies
+5. Run full test suite (189 tests)
+6. Upload coverage artifacts
+
+### Branch Protection
+
+To enforce test requirements on pull requests:
+
+1. **Navigate to:** Repository Settings → Branches → Add rule
+2. **Branch pattern:** `main`
+3. **Enable:**
+   - ✅ Require pull request before merging
+   - ✅ Require status checks to pass before merging
+   - ✅ Require branches to be up to date before merging
+   - ✅ Add required status check: `test`
+
+See `.github/BRANCH_PROTECTION.md` for detailed setup instructions.
+
+### What This Accomplishes
+
+- ✅ **Automated testing** on every PR
+- ✅ **Zero failing tests** required to merge
+- ✅ **Security validation** through Dual-LLM architecture tests
+- ✅ **Code quality** enforcement via required checks
+
+### Testing Before Push
+
+Always run tests locally before creating a PR:
+
+```bash
+./run_tests.sh all
+```
+
+Expected output:
+```
+================ 189 passed, 7 deselected, 7 warnings in 3.62s =================
 ```
 
 ## LangGraph Agent System
@@ -143,7 +238,7 @@ The backend uses a multi-agent system with:
 
 ## Knowledge Base
 
-Place your knowledge base documents in `telecorpBaseKnowledge/`:
+Place your knowledge base documents in `myawesomefakecompanyBaseKnowledge/`:
 - Plans and pricing PDFs
 - Technical guides
 - FAQs
