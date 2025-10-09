@@ -44,7 +44,20 @@ function App() {
         ]);
         setHasUnread(true);
       } catch (err) {
-        setError('Unable to connect to chat service.');
+        const errorMessage = err instanceof Error ? err.message : 'Unable to connect to chat service.';
+        setError(errorMessage);
+        setIsConnected(false);
+
+        // Show a helpful offline message
+        setMessages([
+          {
+            role: 'assistant',
+            content: '⚠️ Chat is currently offline. Please ensure the backend server is running.\n\nTo start the backend:\n1. Open a terminal\n2. Navigate to the backend directory\n3. Run: uvicorn src.main:app --reload',
+            timestamp: new Date().toLocaleTimeString(),
+          },
+        ]);
+        setHasUnread(true);
+
         console.error('Initialization error:', err);
       }
     };
@@ -85,9 +98,16 @@ function App() {
         setHasUnread(true);
       }
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to send message. Please try again.'
-      );
+      const errorMessage = err instanceof Error ? err.message : 'Failed to send message. Please try again.';
+
+      // Add error message to chat
+      const errorBotMessage: ChatMessageType = {
+        role: 'assistant',
+        content: `❌ Error: ${errorMessage}`,
+        timestamp: new Date().toLocaleTimeString(),
+      };
+      setMessages((prev) => [...prev, errorBotMessage]);
+
       console.error('Send message error:', err);
     } finally {
       setIsLoading(false);
@@ -313,12 +333,6 @@ function App() {
             )}
             <div ref={messagesEndRef} />
           </div>
-
-          {error && (
-            <div className="chat-error">
-              <span>⚠️ {error}</span>
-            </div>
-          )}
 
           <ChatInput onSendMessage={handleSendMessage} disabled={isLoading || !isConnected} />
         </div>

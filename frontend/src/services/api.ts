@@ -1,5 +1,5 @@
 /**
- * API service for TeleCorp Chat Application
+ * API service for MyAwesomeFakeCompany Chat Application
  */
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
@@ -29,50 +29,91 @@ class ApiService {
   }
 
   /**
+   * Helper to check if response is JSON
+   */
+  private async parseResponse(response: Response): Promise<any> {
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error('Backend is not responding correctly. Please ensure the server is running.');
+    }
+    return response.json();
+  }
+
+  /**
    * Send a chat message to the AI assistant
    */
   async sendMessage(request: ChatRequest): Promise<ChatResponse> {
-    const response = await fetch(`${this.baseUrl}/ai/chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    });
+    try {
+      const response = await fetch(`${this.baseUrl}/ai/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      throw new Error(error.detail || `HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        const error = await this.parseResponse(response).catch(() => ({
+          detail: `Server error: ${response.status}`
+        }));
+        throw new Error(error.detail || `HTTP error! status: ${response.status}`);
+      }
+
+      return this.parseResponse(response);
+    } catch (error) {
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Cannot connect to backend. Please check if the server is running on http://localhost:8000');
+      }
+      throw error;
     }
-
-    return response.json();
   }
 
   /**
    * Get the welcome message
    */
   async getWelcomeMessage(): Promise<ChatResponse> {
-    const response = await fetch(`${this.baseUrl}/ai/chat/hello`);
+    try {
+      const response = await fetch(`${this.baseUrl}/ai/chat/hello`);
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      throw new Error(error.detail || `HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        const error = await this.parseResponse(response).catch(() => ({
+          detail: `Server error: ${response.status}`
+        }));
+        throw new Error(error.detail || `HTTP error! status: ${response.status}`);
+      }
+
+      return this.parseResponse(response);
+    } catch (error) {
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Cannot connect to backend. Please check if the server is running on http://localhost:8000');
+      }
+      throw error;
     }
-
-    return response.json();
   }
 
   /**
    * Check API health
    */
   async checkHealth(): Promise<{ status: string }> {
-    const response = await fetch(`${this.baseUrl.replace('/api/v1', '')}/health`);
+    try {
+      const response = await fetch(`${this.baseUrl.replace('/api/v1', '')}/health`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
 
-    if (!response.ok) {
-      throw new Error(`Health check failed: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`Health check failed: ${response.status}`);
+      }
+
+      return this.parseResponse(response);
+    } catch (error) {
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Cannot connect to backend server');
+      }
+      throw error;
     }
-
-    return response.json();
   }
 }
 
